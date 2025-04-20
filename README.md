@@ -1,43 +1,47 @@
-# Happen Framework
+# Happen Framework ⚡︎
 
-A Proof-of-Concept framework demonstrating event-driven communication between decoupled nodes with cryptographic integrity.
+**Explore the full documentation:** [**insert-name-here.gitbook.io/happen**](https://insert-name-here.gitbook.io/happen)
 
-This framework emphasizes:
+---
 
-* **Minimalism:** No dependencies beyond the runtime itself.
-* **Runtime Flexibility:** Uses dependency injection for core runtime components (Crypto, Event Emitter), allowing adaptation to different environments (Node.js, Deno, Bun, Browser).
-* **Event Integrity:** Events are signed (using Ed25519) by the emitting node and verified by receiving nodes.
-* **Pattern Matching:** Supports pattern-based event subscriptions beyond exact type matches.
-* **Observability:** Includes hooks for observing and tracing event flow.
+**Welcome to Happen, where we believe in the power of radical simplicity!**
 
-## Features
+Instead of drowning you in abstractions and boilerplate, Happen gives you just two fundamental building blocks—**Nodes** and **Events**—that combine to create systems of surprising power and flexibility. Whether you're building a straightforward automation pipeline, a secure multi-agent system, or exploring complex distributed state management, you'll find that Happen's minimalist approach makes intricate problems suddenly manageable.
 
-* **Decoupled Nodes:** `HappenNode` represents independent actors.
-* **Event Emitter Abstraction:** Uses `IHappenEmitter` interface with `PatternEmitter` wrapper.
-* **Pluggable Runtimes:** Separate implementations for Crypto (`NodeJsCrypto`, `DenoCrypto`, `BrowserCrypto`) and Event Emitters (`NodeJsEventEmitter`, `DenoEventEmitter`, `BrowserEventEmitter`, `BunEventEmitter`).
-* **Cryptographic Signatures:** Ensures event authenticity and integrity using Ed25519 keys.
-* **Pattern Subscriptions:** Listen for events using wildcards (`*`) and alternatives (`{type1,type2}`).
-* **Observability:** Includes `createConsoleObserver` and `createEventTracer` for debugging and monitoring.
-* **Cross-Environment Goal:** Aims to work consistently across Node.js, Deno, Bun, and modern web browsers.
+This framework proves that the most elegant solutions emerge not from adding complexity, but from discovering the right minimal abstractions that let the magic happen naturally.
+
+## Core Principles
+
+*   **Radical Simplicity:** Built on just Nodes and Events. Tiny footprint, zero runtime dependencies.
+*   **Secure by Default:** Events are cryptographically signed (Ed25519) and verified, ensuring integrity and authenticity from the start.
+*   **Runtime Agnostic:** Pluggable modules (`ICrypto`, `IEventEmitter`) allow seamless adaptation to any JavaScript environment (Node.js, Deno, Bun, Browsers).
+
+## Key Features (Explore the Docs for More!)
+
+*   **Autonomous Nodes (`HappenNode`):** Independent actors managing their own state, identity (via key pairs), and event interactions.
+*   **Flexible Event Bus (`PatternEmitter`):** Wraps any standard event emitter to provide powerful pattern matching (`*`, `{alt1,alt2}`) for event subscriptions, going beyond simple type matching.
+*   **Built-in Cryptography:** Automatic Ed25519 signing and verification of events using injected crypto modules.
+*   **Observability Hooks:** Built-in support for `EventObserver` and `EventTracer` allows deep insights into event flow and system behavior, crucial for debugging and testing complex interactions.
+*   **Cross-Environment Ready:** Designed and tested to work consistently across Node.js, Deno, Bun, and even cross-tab in modern web browsers.
+*   **Lifecycle Hooks:** (See Docs) Tap into events at critical points for custom logic.
+*   **Advanced Patterns:** (See Docs) Discover patterns for networking, state management, error handling, and more.
 
 ## Prerequisites
 
-To build and run the tests, you will need:
+To build and run the included examples and tests, you will need:
 
-* **Node.js:** Includes `npm` (used for running scripts defined in `package.json`).
-* **Deno:** Required for the Deno example test.
-* **Bun:** Required for the Bun example test.
+*   **Node.js:** Includes `npm` (used for running scripts defined in `package.json`).
+*   **Deno:** Required for the Deno example test.
+*   **Bun:** Required for the Bun example test.
 
-## Installation
+## Getting Started (Local Dev)
 
-As the framework currently has no external runtime dependencies, installation primarily involves cloning the repository:
+Installation involves cloning the repository:
 
 ```bash
 git clone <repository-url>
 cd happen
 ```
-
-(Note: `npm install` is only needed if development dependencies are added in the future.)
 
 ## Building the Project
 
@@ -49,98 +53,77 @@ npm run build
 
 This command performs the following steps:
 
-1. **`tsc`**: Compiles TypeScript files from `src/` and `examples/` into JavaScript ES Modules in the `dist/` directory.
-2. **`node ./postbuild.cjs`**: Runs a script to automatically add `.js` extensions to relative import paths within the compiled files in `dist/`. This is necessary for Node.js ESM compatibility.
-3. **`mkdir -p ... && cp ...`**: Copies the browser example's `index.html` file into the corresponding `dist` directory so it can be served alongside its JavaScript.
+1.  **`tsc`**: Compiles TypeScript files from `src/` and `examples/` into JavaScript ES Modules in the `dist/` directory.
+2.  **`node ./postbuild.cjs`**: Adds `.js` extensions to relative import paths within `dist/` for Node.js ESM compatibility.
+3.  **`mkdir -p ... && cp ...`**: Copies the browser example's `index.html` into `dist/`.
 
 ## Running Tests
 
-The test suite validates the framework's functionality across different JavaScript runtimes.
+The test suite validates the framework's functionality across different JavaScript runtimes by **testing the compiled output** in the `dist/` directory.
 
 ```bash
 npm run test
 ```
 
-This command executes the `run-tests.sh` script, which follows this philosophy:
+This command executes the `run-tests.sh` script:
 
-1. **Build First:** It ensures the project is built using `npm run build`.
-2. **Test Compiled Output:** All tests are run against the compiled JavaScript files located in the `dist/` directory. This verifies that the final build artifacts work as expected.
-3. **Cross-Runtime Checks:** It runs specific examples using `node`, `deno run`, and `bun run` to confirm compatibility.
-4. **Browser Test (Manual):** The script includes instructions for manually testing the browser example:
-    * Serve the project's root directory (e.g., `npx serve .`).
-    * Open `http://localhost:3000/dist/examples/browser-basic/index.html` (adjust port if needed) in **two separate browser tabs**.
-    * Follow the UI instructions in the tabs (Initialize Node A in one, Node B in the other, then Emit Ping from Node A).
-    * Check the console log in the **Node B tab** for `TEST_RESULT: PASS`.
+1.  Builds the project using `npm run build`.
+2.  Runs examples against the compiled `dist/` output using `node`, `deno run`, and `bun run`.
+3.  Provides instructions for the **manual browser test**, which verifies cross-tab communication via `BroadcastChannel`:
+    *   Serve the project root (e.g., `npx serve .`).
+    *   Open `http://localhost:3000/dist/examples/browser-basic/index.html` (adjust port) in **two separate tabs**.
+    *   Follow UI instructions (Init A in Tab 1, Init B in Tab 2, Emit Ping from Tab 1).
+    *   Check the **Tab 2 console** for `TEST_RESULT: PASS`.
 
-## Basic Usage
-
-Here's a simplified example demonstrating two nodes communicating:
+## Basic Usage Example
 
 ```typescript
+// Simplified example - see /examples for more details
 import { HappenNode } from '../src/core/HappenNode';
-import { NodeJsCrypto } from '../src/runtime/NodeJsCrypto'; // Or Deno/Browser specific
-import { NodeJsEventEmitter } from '../src/runtime/NodeJsEventEmitter'; // Or Deno/Browser specific
+import { NodeJsCrypto } from '../src/runtime/NodeJsCrypto';
+import { NodeJsEventEmitter } from '../src/runtime/NodeJsEventEmitter';
 import { PatternEmitter } from '../src/core/PatternEmitter';
 import type { HappenEvent } from '../src/core/event';
 
 async function main() {
-    // 1. Setup Runtime Modules
+    // 1. Inject Runtime Modules
     const crypto = new NodeJsCrypto();
-    const baseEmitter = new NodeJsEventEmitter(); // Use a runtime-specific emitter
-    const happenEmitter = new PatternEmitter(baseEmitter);
+    const happenEmitter = new PatternEmitter(new NodeJsEventEmitter());
 
-    // 2. Create Nodes
-    const nodeA = new HappenNode('NodeA', { status: 'ready' }, crypto, happenEmitter);
-    const nodeB = new HappenNode('NodeB', { value: 0 }, crypto, happenEmitter);
+    // 2. Create & Initialize Nodes
+    const nodeA = new HappenNode('NodeA', {}, crypto, happenEmitter);
+    const nodeB = new HappenNode('NodeB', { counter: 0 }, crypto, happenEmitter);
+    await Promise.all([nodeA.init(), nodeB.init()]);
 
-    // 3. Initialize Nodes (generates keys)
-    await nodeA.init();
-    await nodeB.init();
-
-    // 4. Node B listens for 'update-value' events
-    const disposeB = nodeB.on('update-value', (event: HappenEvent<{ amount: number }>) => {
-        console.log(`[NodeB] Received '${event.type}' from ${event.metadata.sender}`);
-        const currentState = nodeB.getState();
-        nodeB.setState({ value: currentState.value + event.payload.amount });
-        console.log(`[NodeB] New state: ${JSON.stringify(nodeB.getState())}`);
+    // 3. Subscribe to Events
+    nodeB.on('increment', (event: HappenEvent) => {
+        console.log(`[NodeB] Received '${event.type}'`);
+        nodeB.setState({ counter: nodeB.getState().counter + 1 });
     });
 
-    // 5. Node A emits an event
-    console.log('[NodeA] Emitting update-value...');
-    await nodeA.emit({
-        type: 'update-value',
-        payload: { amount: 10 }
-    });
+    // 4. Emit an Event
+    console.log('[NodeA] Emitting increment...');
+    await nodeA.emit({ type: 'increment' });
 
-    // Allow time for event processing
-    await new Promise(resolve => setTimeout(resolve, 50));
-
-    console.log(`[NodeB] Final state: ${JSON.stringify(nodeB.getState())}`);
-
-    // Cleanup
-    disposeB();
+    await new Promise(resolve => setTimeout(resolve, 50)); // Allow processing
+    console.log(`[NodeB] Final counter: ${nodeB.getState().counter}`); // Output: 1
 }
 
 main().catch(console.error);
 ```
 
-## Core Concepts
+## Dive Deeper
 
-* **`HappenNode<S>`:** Represents a network participant. Manages its own ID, state (`S`), cryptographic keys (Ed25519), and listener registrations. Handles event signing and verification.
-* **`IHappenEmitter`:** An interface defining the core event emission methods (`on`, `off`, `emit`, `addObserver`).
-* **`PatternEmitter`:** An implementation of `IHappenEmitter` that wraps a simpler, runtime-specific `IEventEmitter`. It adds support for pattern matching (`*`, `{}`) in event subscriptions and allows attaching passive `EventObserver` functions.
-* **Runtime Modules (`ICrypto`, `IEventEmitter`):** Interfaces defining necessary runtime capabilities. Concrete implementations (`NodeJsCrypto`, `BrowserEventEmitter`, etc.) are injected into `HappenNode` (or often, into `PatternEmitter` first) to adapt the framework to the target environment.
-* **`HappenEvent<T>`:** The structure of events passed through the system, containing `type`, `payload`, and `metadata` (including `id`, `sender`, `timestamp`, `signature`, `publicKey`, `correlationId`, `causationId`).
+Explore the [**Full Documentation**](https://insert-name-here.gitbook.io/happen) to learn about:
 
-## Examples
-
-The `/examples` directory contains usage demonstrations for different runtimes and scenarios:
-
-* `node-basic.ts`: Simple two-node communication using Node.js `EventEmitter`.
-* `node-chained-events.ts`: Demonstrates correlation and causation IDs for tracing multi-step processes in Node.js.
-* `deno-basic.ts`: Simple two-node communication using Deno's `node:events` compatibility.
-* `bun-basic.ts`: Simple two-node communication using Bun's native `EventEmitter`.
-* `browser-basic/`: Demonstrates cross-tab communication using `BroadcastChannel` via `BrowserEventEmitter`.
+*   Event Lifecycle Hooks
+*   Advanced Communication Patterns
+*   Identity Management
+*   Networking Strategies
+*   Distributed State Management Approaches
+*   Error Handling Techniques
+*   Integrating Third-Party Modules
+*   And much more!
 
 ## License
 
