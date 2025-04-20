@@ -1,6 +1,6 @@
-## Implementation Enhancements
+# Implementation Enhancements 
 
-### 1. Unified Error Handling System
+## 1. Unified Error Handling System
 
 Create a consistent error handling pattern throughout the framework:
 
@@ -29,48 +29,9 @@ Refine the core API to be even more intuitive:
 
 ## Feature Enhancements
 
-### 1. Enhanced Event Contracts
-
-This aligns with the "Strongly-Typed Events & Payloads" item in your TODO list:
-
-```typescript
-// Define an event contract
-node.defineEvent<{userId: string, timestamp: number}>('user-login', {
-  // Optional runtime validation
-  validate: payload => Boolean(payload.userId && typeof payload.timestamp === 'number'),
-  // Optional schema (could integrate with Zod/similar)
-  schema: z.object({
-    userId: z.string(),
-    timestamp: z.number()
-  })
-});
-
-// Benefit from strong typing and validation
-node.on('user-login', event => {
-  // event.payload is now typed as {userId: string, timestamp: number}
-  const { userId, timestamp } = event.payload;
-});
-```
-
 This provides discoverability, type safety, and optional runtime validation without sacrificing the simplicity of the core model.
 
-### 2. Improved Request/Response Pattern
-
-As mentioned in your TODO doc, enhance the request/response pattern:
-
-```typescript
-// Make a request to another node with built-in timeout and typing
-const response = await node.request<RequestType, ResponseType>(
-  targetNode,
-  { type: 'get-user-data', payload: { userId: 'user-123' }},
-  { timeout: 5000 }
-);
-
-// Access strongly-typed response
-const userData = response.payload;
-```
-
-### 3. Lifecycle Hooks Refinement
+### 1. Lifecycle Hooks Refinement
 
 Expand the lifecycle hooks system to provide more precise control:
 
