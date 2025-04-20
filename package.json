@@ -1,0 +1,17 @@
+{
+  "name": "happen-lib",
+  "version": "0.1.0",
+  "description": "POC Event Sourcing / CQRS Framework",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "test": "bash ./run-tests.sh",
+    "build": "tsc && node ./postbuild.cjs && mkdir -p dist/examples/browser-basic && cp examples/browser-basic/index.html dist/examples/browser-basic/"
+  },
+  "keywords": [],
+  "tsc-alias": { 
+    "resolveFullPaths": true, 
+    "verbose": true 
+  }
+} 

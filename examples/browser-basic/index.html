@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happen Browser Example</title>
+    <style>
+        body { font-family: sans-serif; padding: 1em; }
+        button { margin: 0.5em; padding: 0.5em 1em; }
+        #log { background-color: #f0f0f0; border: 1px solid #ccc; padding: 1em; height: 300px; overflow-y: scroll; white-space: pre-wrap; margin-top: 1em; }
+        body.isNodeA #btnInitA, body.isNodeA #btnEmitA { background-color: lightgreen; }
+        body.isNodeB #btnInitB, body.isNodeB #btnEmitB { background-color: lightblue; }
+    </style>
+</head>
+<body>
+    <h1>Happen Browser Example (BroadcastChannel)</h1>
+    <p>Open this page in two separate browser tabs. Initialize A in one, B in the other.</p>
+
+    <!-- Restore button controls -->
+    <div>
+        <button id="btnInitA">Init Node A</button>
+        <button id="btnEmitA">Node A Emit 'ping'</button>
+    </div>
+    <div>
+        <button id="btnInitB">Init Node B</button>
+        <button id="btnEmitB">Node B Emit 'pong'</button>
+    </div>
+
+    <h2>Log:</h2>
+    <div id="log"></div>
+
+    <!-- Load compiled JS relative to this HTML file in dist -->
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
