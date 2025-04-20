@@ -172,4 +172,4 @@ Explore the [**Full Documentation**](https://insert-name-here.gitbook.io/happen)
 
 ## License
 
-(Specify License - e.g., MIT, Apache 2.0, or TBD)
+MIT License
