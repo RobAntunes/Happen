@@ -1,8 +1,14 @@
-import { HappenNode } from '../../src/core/HappenNode';
+import {
+  HappenNode,
+  createHappenContext,
+  NodeOptions
+} from '../../src/core/HappenNode';
 import { BrowserCrypto } from '../../src/runtime/BrowserCrypto';
 import { BrowserEventEmitter } from '../../src/runtime/BrowserEventEmitter';
 import { PatternEmitter } from '../../src/core/PatternEmitter';
 import type { HappenEvent } from '../../src/core/event';
+import type { HappenRuntimeModules } from '../../src/core/runtime-modules';
+import { createConsoleObserver } from '../../src/observability/observer';
 // Observers/Tracers are less useful in this split-tab example, removing for simplicity
 // import { createConsoleObserver } from '../../src/observability/observer';
 // import { createEventTracer } from '../../src/observability/tracer';
@@ -45,7 +51,9 @@ try {
         thisTabIs = 'A';
         document.body.classList.add('isNodeA');
         log('Initializing this tab as Node A...');
-        nodeA = new HappenNode('NodeA', { pingsSent: 0 }, crypto, happenEmitter);
+        const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
+        const createNode = createHappenContext(runtimeModules);
+        nodeA = createNode({ id: 'NodeA', initialState: { pingsSent: 0 } });
         await nodeA.init();
         log('Node A Initialized.');
         // Node A listens for 'pong'
@@ -63,7 +71,9 @@ try {
         thisTabIs = 'B';
         document.body.classList.add('isNodeB');
         log('Initializing this tab as Node B...');
-        nodeB = new HappenNode('NodeB', { pongsReceived: 0 }, crypto, happenEmitter);
+        const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
+        const createNode = createHappenContext(runtimeModules);
+        nodeB = createNode({ id: 'NodeB', initialState: { pongsReceived: 0 } });
         await nodeB.init(); // Initialize first
         log('Node B Initialized.');
         // Node B listens for 'ping'

@@ -1,9 +1,20 @@
 import { HappenListener, IHappenEmitter } from './emitter';
 // Use types from runtime-modules
-import { ICrypto, JsonWebKey, BufferSource } from './runtime-modules';
+import { ICrypto, JsonWebKey, BufferSource, HappenRuntimeModules } from './runtime-modules';
 import { HappenEvent } from './event';
 import { canonicalStringify } from '../utils/canonicalStringify';
 import { PatternEmitter } from './PatternEmitter';
+
+/**
+ * Configuration options for creating a HappenNode.
+ */
+export interface NodeOptions<S = any> {
+    /** Optional unique identifier for the node. Defaults to a random UUID. */
+    id?: string;
+    /** Optional initial state for the node. */
+    initialState?: S;
+    // Add other node-specific options here if needed in the future
+}
 
 /**
  * Represents a node in the Happen network.
@@ -253,4 +264,46 @@ export class HappenNode<S = any> {
         this.receivedEventIds.clear();
         console.log(`Node ${this.id}: Destroyed.`);
     }
+}
+
+// ==========================================
+//        Node Factory / Context
+// ==========================================
+
+/**
+ * Type definition for the function returned by createHappenContext,
+ * which is used to create nodes within that context.
+ */
+export type NodeCreationFunction = <S = any>(options?: NodeOptions<S>) => HappenNode<S>;
+
+/**
+ * Creates a Happen context with pre-configured runtime modules.
+ * This returns a factory function for creating nodes within that context.
+ *
+ * @param runtimeModules The shared runtime modules (crypto implementation, emitter instance).
+ * @returns A function (`createNodeInContext`) that creates HappenNode instances with the provided modules.
+ */
+export function createHappenContext(runtimeModules: HappenRuntimeModules): NodeCreationFunction {
+    // Validate runtime modules
+    if (!runtimeModules || typeof runtimeModules !== 'object') {
+        throw new Error('createHappenContext: Invalid runtimeModules object provided.');
+    }
+    if (!runtimeModules.crypto || typeof runtimeModules.crypto.randomUUID !== 'function') {
+        throw new Error('createHappenContext: Missing or invalid ICrypto implementation in runtimeModules.');
+    }
+    if (!runtimeModules.emitterInstance || typeof runtimeModules.emitterInstance.emit !== 'function') {
+        throw new Error('createHappenContext: Missing or invalid IHappenEmitter instance in runtimeModules.');
+    }
+
+    // Return the factory function
+    const createNodeInContext = <S = any>(options?: NodeOptions<S>): HappenNode<S> => {
+        return new HappenNode<S>(
+            options?.id ?? runtimeModules.crypto.randomUUID(),
+            options?.initialState ?? {} as S,
+            runtimeModules.crypto,
+            runtimeModules.emitterInstance
+        );
+    };
+
+    return createNodeInContext;
 }

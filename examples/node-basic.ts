@@ -1,8 +1,8 @@
-import { HappenNode } from '../src/core/HappenNode';
+import { HappenNode, createHappenContext, NodeOptions } from '../src/core/HappenNode';
 import { NodeJsCrypto } from '../src/runtime/NodeJsCrypto';
 import { NodeJsEventEmitter } from '../src/runtime/NodeJsEventEmitter';
 import { EventEmitter } from 'node:events';
-import type { IEventEmitter } from '../src/core/runtime-modules';
+import type { IEventEmitter, HappenRuntimeModules } from '../src/core/runtime-modules';
 import type { HappenEvent } from '../src/core/event';
 import { PatternEmitter } from '../src/core/PatternEmitter';
 import { createConsoleObserver } from '../src/observability/observer';
@@ -13,13 +13,13 @@ import { createEventTracer } from '../src/observability/tracer';
 async function runExample() {
     console.log("--- Basic Node.js Example Start ---");
 
-    // 1. Setup Runtime Modules
+    // 1. Setup Runtime Modules & Context/Factory
     const crypto = new NodeJsCrypto();
     const baseEmitter = new EventEmitter() as IEventEmitter;
     baseEmitter.setMaxListeners(30);
-
-    // Wrap the base emitter with PatternEmitter
     const happenEmitter = new PatternEmitter(baseEmitter);
+    const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
+    const createNode = createHappenContext(runtimeModules);
 
     // Add a Console Observer to the Emitter
     const disposeObserver = happenEmitter.addObserver(createConsoleObserver({
@@ -33,9 +33,9 @@ async function runExample() {
     const tracer = createEventTracer('message', happenEmitter);
     console.log("Tracer attached for 'message' events.");
 
-    // 2. Create Nodes (pass the PatternEmitter instance)
-    const nodeA = new HappenNode('NodeA', { status: 'idle' }, crypto, happenEmitter);
-    const nodeB = new HappenNode('NodeB', { messagesReceived: 0 }, crypto, happenEmitter);
+    // 2. Create Nodes using the factory
+    const nodeA = createNode({ id: 'NodeA', initialState: { status: 'idle' } });
+    const nodeB = createNode({ id: 'NodeB', initialState: { messagesReceived: 0 } });
 
     // 3. Initialize Nodes
     console.log(`\nInitializing nodes...`);

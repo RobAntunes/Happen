@@ -1,8 +1,8 @@
-import { HappenNode } from '../src/core/HappenNode';
+import { HappenNode, createHappenContext, NodeOptions } from '../src/core/HappenNode';
 import { NodeJsCrypto } from '../src/runtime/NodeJsCrypto';
 import { NodeJsEventEmitter } from '../src/runtime/NodeJsEventEmitter';
 import { EventEmitter } from 'node:events';
-import type { IEventEmitter } from '../src/core/runtime-modules';
+import type { IEventEmitter, HappenRuntimeModules } from '../src/core/runtime-modules';
 import type { HappenEvent } from '../src/core/event';
 import { PatternEmitter } from '../src/core/PatternEmitter';
 import { createConsoleObserver } from '../src/observability/observer';
@@ -11,11 +11,13 @@ import { createEventTracer } from '../src/observability/tracer';
 async function runChainedExample() {
     console.log("--- Chained Events Example Start ---");
 
-    // 1. Setup
+    // 1. Setup Runtime Modules & Context/Factory
     const crypto = new NodeJsCrypto();
     const baseEmitter = new EventEmitter() as IEventEmitter;
     baseEmitter.setMaxListeners(30);
     const happenEmitter = new PatternEmitter(baseEmitter);
+    const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
+    const createNode = createHappenContext(runtimeModules);
 
     // Add Observer (optional, quieter config)
     const disposeObserver = happenEmitter.addObserver(createConsoleObserver({ prefix: '[O]', logPayload: false, logMetadata: false }));
@@ -24,10 +26,10 @@ async function runChainedExample() {
     const tracer = createEventTracer('*', happenEmitter);
     console.log("Tracer attached for * events.");
 
-    // 2. Create Nodes
-    const serviceA = new HappenNode('ServiceA', {}, crypto, happenEmitter);
-    const serviceB = new HappenNode('ServiceB', {}, crypto, happenEmitter);
-    const serviceC = new HappenNode('ServiceC', {}, crypto, happenEmitter);
+    // 2. Create Nodes using the factory
+    const serviceA = createNode({ id: 'ServiceA', initialState: {} });
+    const serviceB = createNode({ id: 'ServiceB', initialState: {} });
+    const serviceC = createNode({ id: 'ServiceC', initialState: {} });
 
     // 3. Initialize Nodes
     console.log("\nInitializing services...");

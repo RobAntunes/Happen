@@ -1,8 +1,9 @@
-import { HappenNode } from '../src/core/HappenNode';
+import { HappenNode, createHappenContext, NodeOptions } from '../src/core/HappenNode';
 import { BunCrypto } from '../src/runtime/BunCrypto'; // Re-exports NodeJsCrypto
 import { BunEventEmitter } from '../src/runtime/BunEventEmitter'; // Uses Node compatible EventEmitter
 import { PatternEmitter } from '../src/core/PatternEmitter';
 import type { HappenEvent } from '../src/core/event';
+import type { HappenRuntimeModules } from '../src/core/runtime-modules';
 import { createConsoleObserver } from '../src/observability/observer';
 import { createEventTracer } from '../src/observability/tracer';
 
@@ -11,11 +12,13 @@ import { createEventTracer } from '../src/observability/tracer';
 async function runBunExample() {
     console.log("--- Basic Bun Example Start ---");
 
-    // 1. Setup Runtime Modules
+    // 1. Setup Runtime Modules & Context/Factory
     const crypto = new BunCrypto();
     const baseEmitter = new BunEventEmitter(); // Use Bun's EE
     baseEmitter.setMaxListeners(30);
     const happenEmitter = new PatternEmitter(baseEmitter);
+    const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
+    const createNode = createHappenContext(runtimeModules); // Create the factory
 
     // Add Observer
     const disposeObserver = happenEmitter.addObserver(createConsoleObserver({ prefix: '[O]', logPayload: false, logMetadata: false }));
@@ -23,9 +26,9 @@ async function runBunExample() {
     const tracer = createEventTracer('*', happenEmitter);
     console.log("Observer and Tracer attached.");
 
-    // 2. Create Nodes
-    const nodeA = new HappenNode('BunNodeA', { msg: 'A' }, crypto, happenEmitter);
-    const nodeB = new HappenNode('BunNodeB', { msg: 'B' }, crypto, happenEmitter);
+    // 2. Create Nodes using the factory
+    const nodeA = createNode({ id: 'BunNodeA', initialState: { msg: 'A' } });
+    const nodeB = createNode({ id: 'BunNodeB', initialState: { msg: 'B' } });
 
     // 3. Initialize Nodes
     console.log(`\nInitializing nodes...`);

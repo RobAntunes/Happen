@@ -75,38 +75,83 @@ This command executes the `run-tests.sh` script:
     *   Follow UI instructions (Init A in Tab 1, Init B in Tab 2, Emit Ping from Tab 1).
     *   Check the **Tab 2 console** for `TEST_RESULT: PASS`.
 
+## Runtime Module Injection & Node Creation
+
+Happen uses dependency injection for its core runtime components:
+
+1.  **`ICrypto`**: Handles cryptographic operations (key generation, signing, verification). Implementations exist for Node.js/Bun (`NodeJsCrypto`), Deno (`DenoCrypto`), and Browsers (`BrowserCrypto`).
+2.  **`IHappenEmitter`**: Provides the underlying event emission and subscription mechanism. Implementations often wrap standard emitters like Node.js `EventEmitter` (`NodeJsEventEmitter`), browser `BroadcastChannel` (`BrowserEventEmitter`), or Deno's `EventEmitter`. The `PatternEmitter` wraps a base `IHappenEmitter` to add wildcard/pattern matching capabilities.
+
+To simplify node creation and ensure consistent module usage, use the `createHappenContext` factory:
+
+```typescript
+import { createHappenContext } from './src/core/HappenNode';
+import { NodeJsCrypto } from './src/runtime/NodeJsCrypto';
+import { NodeJsEventEmitter } from './src/runtime/NodeJsEventEmitter';
+import { PatternEmitter } from './src/core/PatternEmitter';
+import type { HappenRuntimeModules } from './src/core/runtime-modules';
+
+// 1. Define the runtime modules
+const crypto = new NodeJsCrypto();
+const baseEmitter = new NodeJsEventEmitter();
+const happenEmitter = new PatternEmitter(baseEmitter);
+const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
+
+// 2. Create the context factory
+const createNode = createHappenContext(runtimeModules);
+
+// 3. Use the factory to create nodes
+const nodeA = createNode({ id: 'NodeA', initialState: { status: 'idle' } });
+const nodeB = createNode({ id: 'NodeB', initialState: { counter: 0 } });
+```
+
+This pattern ensures all nodes created via `createNode` share the same crypto implementation and emitter instance, simplifying setup and promoting consistency.
+
 ## Basic Usage Example
 
 ```typescript
 // Simplified example - see /examples for more details
-import { HappenNode } from '../src/core/HappenNode';
-import { NodeJsCrypto } from '../src/runtime/NodeJsCrypto';
-import { NodeJsEventEmitter } from '../src/runtime/NodeJsEventEmitter';
-import { PatternEmitter } from '../src/core/PatternEmitter';
-import type { HappenEvent } from '../src/core/event';
+import { createHappenContext, HappenNode } from './src/core/HappenNode';
+import { NodeJsCrypto } from './src/runtime/NodeJsCrypto';
+import { NodeJsEventEmitter } from './src/runtime/NodeJsEventEmitter';
+import { PatternEmitter } from './src/core/PatternEmitter';
+import type { HappenEvent } from './src/core/event';
+import type { HappenRuntimeModules } from './src/core/runtime-modules';
 
 async function main() {
-    // 1. Inject Runtime Modules
+    // 1. Setup Runtime Modules & Context
     const crypto = new NodeJsCrypto();
-    const happenEmitter = new PatternEmitter(new NodeJsEventEmitter());
+    const baseEmitter = new NodeJsEventEmitter();
+    const happenEmitter = new PatternEmitter(baseEmitter);
+    const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
+    const createNode = createHappenContext(runtimeModules);
 
-    // 2. Create & Initialize Nodes
-    const nodeA = new HappenNode('NodeA', {}, crypto, happenEmitter);
-    const nodeB = new HappenNode('NodeB', { counter: 0 }, crypto, happenEmitter);
+    // 2. Create & Initialize Nodes using the factory
+    const nodeA = createNode({ id: 'NodeA', initialState: {} });
+    const nodeB = createNode({ id: 'NodeB', initialState: { counter: 0 } });
+    // Nodes need initialization for cryptographic keys
     await Promise.all([nodeA.init(), nodeB.init()]);
 
     // 3. Subscribe to Events
     nodeB.on('increment', (event: HappenEvent) => {
-        console.log(`[NodeB] Received '${event.type}'`);
-        nodeB.setState({ counter: nodeB.getState().counter + 1 });
+        console.log(`[NodeB] Received '${event.type}' from ${event.metadata.sender}`);
+        // Ensure state update is safe
+        const currentState = nodeB.getState();
+        if (typeof currentState.counter === 'number') {
+             nodeB.setState({ counter: currentState.counter + 1 });
+        }
     });
 
     // 4. Emit an Event
     console.log('[NodeA] Emitting increment...');
-    await nodeA.emit({ type: 'increment' });
+    await nodeA.emit({ type: 'increment', payload: {} }); // Payload is optional
 
-    await new Promise(resolve => setTimeout(resolve, 50)); // Allow processing
+    // Wait briefly for event processing
+    await new Promise(resolve => setTimeout(resolve, 50));
     console.log(`[NodeB] Final counter: ${nodeB.getState().counter}`); // Output: 1
+
+    // Clean up listeners if needed (e.g., in long-running apps)
+    // nodeB.destroy(); // Destroys the node and its listeners
 }
 
 main().catch(console.error);

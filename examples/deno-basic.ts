@@ -1,8 +1,8 @@
-import { HappenNode } from '../src/core/HappenNode';
+import { HappenNode, createHappenContext, NodeOptions } from '../src/core/HappenNode';
 import { DenoCrypto } from '../src/runtime/DenoCrypto';
 // Use Node compatible EventEmitter via deno std/node
 import { EventEmitter } from 'node:events';
-import type { IEventEmitter } from '../src/core/runtime-modules';
+import type { IEventEmitter, HappenRuntimeModules } from '../src/core/runtime-modules';
 import { PatternEmitter } from '../src/core/PatternEmitter';
 import type { HappenEvent } from '../src/core/event';
 import { createConsoleObserver } from '../src/observability/observer';
@@ -13,21 +13,22 @@ import { createEventTracer } from '../src/observability/tracer';
 async function runDenoExample() {
     console.log("--- Basic Deno Example Start ---");
 
-    // 1. Setup Runtime Modules
+    // 1. Setup Runtime Modules & Context/Factory
     const crypto = new DenoCrypto();
-    // Use Node compatible EventEmitter
     const baseEmitter = new EventEmitter() as IEventEmitter;
-    baseEmitter.setMaxListeners?.(30); // Use optional chaining as it might be missing
+    baseEmitter.setMaxListeners?.(30);
     const happenEmitter = new PatternEmitter(baseEmitter);
+    const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
+    const createNode = createHappenContext(runtimeModules);
 
     // Add Observer & Tracer
     const disposeObserver = happenEmitter.addObserver(createConsoleObserver({ prefix: '[O]', logPayload: false, logMetadata: false }));
     const tracer = createEventTracer('*', happenEmitter);
     console.log("Observer and Tracer attached.");
 
-    // 2. Create Nodes
-    const nodeA = new HappenNode('DenoNodeA', { count: 0 }, crypto, happenEmitter);
-    const nodeB = new HappenNode('DenoNodeB', { count: 0 }, crypto, happenEmitter);
+    // 2. Create Nodes using the factory
+    const nodeA = createNode({ id: 'DenoNodeA', initialState: { count: 0 } });
+    const nodeB = createNode({ id: 'DenoNodeB', initialState: { count: 0 } });
 
     // 3. Initialize Nodes
     console.log(`\nInitializing nodes...`);
