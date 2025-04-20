@@ -28,7 +28,7 @@ This framework proves that the most elegant solutions emerge not from adding com
 
 ## Prerequisites
 
-To build and run the included examples and tests, you will need:
+To build and run the included examples and tests, you will need one of the following:
 
 *   **Node.js:** Includes `npm` (used for running scripts defined in `package.json`).
 *   **Deno:** Required for the Deno example test.
