@@ -441,3 +441,5 @@ export function createNode(
     options?: NodeOptions): HappenNode {
   return new HappenNode(runtimeModules, options);
 }
+
+export { createHappenContext } from './HappenNode';

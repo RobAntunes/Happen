@@ -1,7 +1,7 @@
 {
   "name": "happen-lib",
   "version": "0.1.0",
-  "description": "POC Event Sourcing / CQRS Framework",
+  "description": "Glue with superpowers",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "type": "module",

@@ -82,13 +82,16 @@ run_test "node-basic" "node ${EXAMPLES_DIST_DIR}/node-basic.js" || overall_statu
 # 2. Node.js Chained Example (run .js file from dist)
 run_test "node-chained" "node ${EXAMPLES_DIST_DIR}/node-chained-events.js" || overall_status=1
 
-# 3. Deno Basic Example (run .js file from dist, needs allow-read for potential relative imports within dist)
+# 3. Node.js Hooks Example (run .js file from dist)
+run_test "node-hooks" "node ${EXAMPLES_DIST_DIR}/hook-showcase.js" || overall_status=1
+
+# 4. Deno Basic Example (run .js file from dist, needs allow-read for potential relative imports within dist)
 run_test "deno-basic" "deno run --allow-read --allow-env --allow-net ${EXAMPLES_DIST_DIR}/deno-basic.js" || overall_status=1
 
-# 4. Bun Basic Example (run .js file from dist)
+# 5. Bun Basic Example (run .js file from dist)
 run_test "bun-basic" "bun run ${EXAMPLES_DIST_DIR}/bun-basic.js" || overall_status=1
 
-# 5. Browser Example (Build step is already done by npm run build, just show message)
+# 6. Browser Example (Build step is already done by npm run build, just show message)
 echo -e "\n${YELLOW}Browser Test Setup:${NC}"
 echo "Build successful (done during initial build): ${BROWSER_EXAMPLE_DIST_DIR}/main.js"
 echo -e "${YELLOW}MANUAL ACTION REQUIRED:${NC}"

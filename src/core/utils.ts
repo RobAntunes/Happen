@@ -29,4 +29,31 @@ export function canonicalStringify(value: any): string {
     });
 
     return '{' + stringifiedPairs.join(',') + '}';
-} 
+}
+
+// --- Remove Base64 Utils and Deno Import Logic Below ---
+/*
+// Try to import Deno std lib, will fail gracefully in other envs
+let DenoBase64: any = null;
+try {
+    // @ts-ignore - Ignore type error for Deno global
+    if (typeof Deno !== 'undefined') {
+        // Dynamically import in Deno environment
+        const { encode, decode } = await import('https://deno.land/std@0.177.0/encoding/base64.ts');
+        DenoBase64 = { encode, decode };
+    }
+} catch (e) {
+    // Ignore import errors in non-Deno environments
+}
+
+// ... (encodeToBase64 function removed) ...
+
+// ... (decodeFromBase64 function removed) ...
+*/
+
+// --- Remove Redundant Re-export Below ---
+/*
+// Keep existing utils like canonicalStringify if they exist below
+// ...
+export { canonicalStringify } from '../utils/canonicalStringify'; // Example: Assuming it was imported/defined elsewhere
+*/ 
