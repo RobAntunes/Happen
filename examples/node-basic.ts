@@ -1,4 +1,5 @@
-import { HappenNode, createHappenContext, NodeOptions } from '../src/core/HappenNode';
+import { HappenNode, NodeOptions } from "../src/core/HappenNode";
+import { createHappenContext } from "../src/core/factory";
 import { NodeJsCrypto } from '../src/runtime/NodeJsCrypto';
 import { NodeJsEventEmitter } from '../src/runtime/NodeJsEventEmitter';
 import { EventEmitter } from 'node:events';
@@ -8,88 +9,105 @@ import { PatternEmitter } from '../src/core/PatternEmitter';
 import { createConsoleObserver } from '../src/observability/observer';
 import { createEventTracer } from '../src/observability/tracer';
 
+// --- Helper Function for Testing Async State Changes ---
+// REMOVED waitForState - using signal pattern instead
+
+// --- End Helper ---
+
 // Basic Example: Two nodes communicating via a shared Node.js EventEmitter
 
 async function runExample() {
-    console.log("--- Basic Node.js Example Start ---");
+    console.log("--- Node Emitter Basic Example Start ---");
+    let nodeA: HappenNode | null = null;
+    let nodeB: HappenNode | null = null;
+    let disposeListenerB: (() => void) | null = null;
+    // Use built-in crypto for Node.js
+    const crypto = await import('node:crypto');
 
-    // 1. Setup Runtime Modules & Context/Factory
-    const crypto = new NodeJsCrypto();
-    const baseEmitter = new EventEmitter() as IEventEmitter;
-    baseEmitter.setMaxListeners(30);
-    const happenEmitter = new PatternEmitter(baseEmitter);
-    const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
-    const createNode = createHappenContext(runtimeModules);
+    try {
+        // 1. Setup Runtime Modules & Context/Factory (using PatternEmitter)
+        const runtimeModules = getDefaultNodeRuntimeModules();
+        const createNode = createHappenContext(runtimeModules);
+        console.log("HappenContext created with default PatternEmitter.");
 
-    // Add a Console Observer to the Emitter
-    const disposeObserver = happenEmitter.addObserver(createConsoleObserver({
-        prefix: '[OBSERVER]',
-        logPayload: false,
-        logMetadata: false
-    }));
-    console.log("Observer attached.");
+        // 2. Create Nodes
+        nodeA = createNode({ id: "NodeA", initialState: { sent: 0 } });
+        nodeB = createNode({ id: "NodeB", initialState: { received: 0 } });
 
-    // Add an Event Tracer for 'message' events
-    const tracer = createEventTracer('message', happenEmitter);
-    console.log("Tracer attached for 'message' events.");
+        // 3. Initialize Nodes
+        await nodeA!.init();
+        await nodeB!.init();
+        console.log("Nodes initialized.");
 
-    // 2. Create Nodes using the factory
-    const nodeA = createNode({ id: 'NodeA', initialState: { status: 'idle' } });
-    const nodeB = createNode({ id: 'NodeB', initialState: { messagesReceived: 0 } });
+        // 4. Setup Listener on Node B
+        disposeListenerB = nodeB!.on(
+            "basic-event",
+            // Make handler async to allow broadcasting the signal
+            async (event: HappenEvent<{ message: string }>) => {
+                console.log(`\n[NodeB] Handler running for event: ${event.metadata.id}`);
+                const currentState = nodeB!.getState();
+                nodeB!.setState({ received: currentState.received + 1 });
 
-    // 3. Initialize Nodes
-    console.log(`\nInitializing nodes...`);
-    await nodeA.init();
-    await nodeB.init();
-    console.log("Nodes initialized.");
+                // Check for and send completion signal if requested
+                const signalId = event.metadata.context?.signalOnCompletion as string | undefined;
+                if (signalId) {
+                    console.log(`[NodeB] Sending completion signal: _signal.${signalId}`);
+                    await nodeB!.broadcast({ type: `_signal.${signalId}` }); // Signal back
+                }
+            },
+        );
+        console.log("[NodeB] Listener ready.");
 
-    // 4. Setup Listener on Node B
-    console.log(`\nSetting up listener on Node B for 'message' events...`);
-    const disposeListener = nodeB.on('message', (event: HappenEvent<{ text: string }>) => {
-        console.log(`\n[NodeB] Handler running for event: ${event.metadata.id}`);
-        const currentState = nodeB.getState();
-        nodeB.setState({ messagesReceived: currentState.messagesReceived + 1 });
-    });
-    console.log("[NodeB] Listener ready.");
+        // 5. Node A Broadcasts an Event
+        console.log("\nNodeA broadcasting 'basic-event' event...");
+        const eventId = crypto.randomUUID();
+        const signalId = crypto.randomUUID(); // Unique ID for this interaction's signal
 
-    // 5. Node A Emits an Event
-    console.log("\nNode A emitting 'message' event...");
-    const eventId = crypto.randomUUID();
-    await nodeA.emit({
-        type: 'message',
-        payload: { text: 'Hello from Node A!' },
-        metadata: { id: eventId }
-    });
-    console.log(`[NodeA] Event ${eventId} emitted.`);
+        // Setup promise and listener for the completion signal *before* broadcasting
+        const signalPromise = new Promise<void>((resolve, reject) => {
+            let disposeSignalListener: (() => void) | null = null;
+            const signalTimeoutId = setTimeout(() => {
+                 if (disposeSignalListener) disposeSignalListener(); 
+                 reject(new Error(`Timeout waiting for completion signal ${signalId}`));
+            }, 1000); // Timeout (e.g., 1 second)
 
-    // Add a small delay to allow async operations (like observer logging) to potentially complete
-    await new Promise(resolve => setTimeout(resolve, 50));
+            const signalEventType = `_signal.${signalId}`;
+            disposeSignalListener = nodeA!.on(signalEventType, (signalEvent: HappenEvent<any>) => {
+                console.log(`[NodeA] Received signal ${signalEventType} for event ${eventId}`);
+                clearTimeout(signalTimeoutId);
+                if (disposeSignalListener) disposeSignalListener(); // Clean up listener
+                resolve();
+            });
+        });
 
-    // 6. Examine Trace
-    console.log("\nExamining trace...");
-    const trace = tracer.getTrace(eventId);
-    if (trace) {
-        console.log(`  Trace found for ID: ${eventId}`);
-        console.log(`  Event Path: ${trace.path.join(' -> ')}`);
-        console.log(`  Number of events in trace: ${trace.events.length}`);
-    } else {
-        console.log(`  No trace found for ID: ${eventId}`);
+        // Broadcast the event, including the signal ID
+        await nodeA!.broadcast({
+            type: 'basic-event',
+            payload: { message: 'Hello from NodeA!' },
+            metadata: { 
+                id: eventId,
+                context: { signalOnCompletion: signalId } // Add signal request
+            }
+        });
+        console.log(`[NodeA] Event ${eventId} broadcasted, waiting for signal ${signalId}.`);
+        await nodeA!.setState({ sent: 1 });
+
+        // 6. Wait for completion signal
+        console.log("\nWaiting for completion signal from Node B...");
+        await signalPromise; // Wait for the signal
+
+        // 7. Verification
+        const finalStateA = nodeA!.getState();
+
+        // Add a marker for test runners
+        console.log("TEST_RESULT: PASS");
+
+        console.log("\n--- Node Emitter Basic Example End ---");
+
+    } catch (error) {
+        console.error("Example failed:", error);
+        process.exit(1);
     }
-
-    // 7. Cleanup
-    console.log("\nCleaning up listener, observer, and tracer...");
-    disposeListener();
-    disposeObserver();
-    tracer.dispose();
-    console.log("Cleanup complete.");
-
-    console.log("Listener and observer disposed.");
-
-    // Add a marker for test runners
-    console.log("TEST_RESULT: PASS");
-
-    console.log("\n--- Basic Node.js Example End ---");
-
 }
 
 runExample().catch(error => {

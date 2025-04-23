@@ -1,8 +1,9 @@
 import {
   HappenNode,
-  createHappenContext,
+  // createHappenContext, // Removed from here
   NodeOptions
 } from '../../src/core/HappenNode';
+import { createHappenContext } from '../../src/core/factory'; // Added import
 import { BrowserCrypto } from '../../src/runtime/BrowserCrypto';
 import { BrowserEventEmitter } from '../../src/runtime/BrowserEventEmitter';
 import { PatternEmitter } from '../../src/core/PatternEmitter';
@@ -57,7 +58,7 @@ try {
         await nodeA.init();
         log('Node A Initialized.');
         // Node A listens for 'pong'
-        disposeA = nodeA.on('pong', (event: HappenEvent<any>) => {
+        disposeA = nodeA!.on('pong', (event: HappenEvent<any>) => {
             log(`[NodeA] Received '${event.type}' from ${event.metadata.sender}.`);
         });
         log('Node A listening for pong.');
@@ -77,7 +78,7 @@ try {
         await nodeB.init(); // Initialize first
         log('Node B Initialized.');
         // Node B listens for 'ping'
-        disposeB = nodeB.on('ping', (event: HappenEvent<any>) => {
+        disposeB = nodeB!.on('ping', (event: HappenEvent<any>) => {
             log(`[NodeB] Received '${event.type}' from ${event.metadata.sender}. Updating state.`);
             const state = nodeB?.getState();
             if (state && nodeB) {
@@ -95,10 +96,10 @@ try {
             return;
         }
         log('[NodeA] Emitting ping via BroadcastChannel...');
-        const state = nodeA.getState();
-        await nodeA.emit({ type: 'ping', payload: { count: state.pingsSent + 1 } });
-        nodeA.setState({ pingsSent: state.pingsSent + 1 });
-        log(`[NodeA] Ping emitted. New state: ${JSON.stringify(nodeA.getState())}`);
+        const state = nodeA!.getState();
+        await nodeA!.broadcast({ type: 'ping', payload: { count: state.pingsSent + 1 } });
+        nodeA!.setState({ pingsSent: state.pingsSent + 1 });
+        log(`[NodeA] Ping emitted. New state: ${JSON.stringify(nodeA!.getState())}`);
         log('---> Check the Node B tab console for receipt and TEST_RESULT <--- ');
     });
 
@@ -108,7 +109,7 @@ try {
             return;
         }
         log('[NodeB] Emitting pong via BroadcastChannel...');
-        await nodeB.emit({ type: 'pong', payload: {} });
+        await nodeB!.broadcast({ type: 'pong', payload: {} });
         log(`[NodeB] Pong emitted.`);
     });
 

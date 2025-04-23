@@ -1,175 +1,406 @@
-# Happen Framework ⚡︎
+# Happen
+<!-- 
+<p align="center">
+  <img src="assets/happen-logo.svg" alt="Happen Framework Logo" width="180" />
+</p>
 
-**Explore the full documentation:** [**insert-name-here.gitbook.io/happen**](https://insert-name-here.gitbook.io/happen)
+<p align="center">
+  <strong>A framework for building agentic systems founded on a philosophy of radical simplicity.</strong>
+</p>
 
----
+<p align="center">
+  <a href="https://happen-docs.dev">Documentation</a> •
+  <a href="#examples">Examples</a> •
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p> -->
 
-**Welcome to Happen, where we believe in the power of radical simplicity!**
+## Overview
 
-Instead of drowning you in abstractions and boilerplate, Happen gives you just two fundamental building blocks—**Nodes** and **Events**—that combine to create systems of surprising power and flexibility. Whether you're building a straightforward automation pipeline, a secure multi-agent system, or exploring complex distributed state management, you'll find that Happen's minimalist approach makes intricate problems suddenly manageable.
+Happen distills agent-based systems down to their essence, providing just two fundamental building blocks that combine to create systems ranging from simple pipelines to complex, adaptive multi-agent ecosystems:
 
-This framework proves that the most elegant solutions emerge not from adding complexity, but from discovering the right minimal abstractions that let the magic happen naturally.
+1. **Nodes** - Independent, autonomous components that process and respond to information
+2. **Events** - Structured messages that transport data and intentions between Nodes
 
-## Core Principles
+Unlike conventional frameworks that burden developers with complex abstractions, Happen's minimalist approach creates a framework that is both accessible to newcomers and powerful enough for experts, allowing developers to focus on solving domain problems rather than battling framework complexities.
 
-*   **Radical Simplicity:** Built on just Nodes and Events. Tiny footprint, zero runtime dependencies.
-*   **Secure by Default:** Events are cryptographically signed (Ed25519) and verified, ensuring integrity and authenticity from the start.
-*   **Runtime Agnostic:** Pluggable modules (`ICrypto`, `IEventEmitter`) allow seamless adaptation to any JavaScript environment (Node.js, Deno, Bun, Browsers).
+```javascript
+// Create independent nodes
+const orderNode = createNode('order-service');
+const paymentNode = createNode('payment-service');
+const inventoryNode = createNode('inventory-service');
 
-## Key Features (Explore the Docs for More!)
+// Define event handlers
+orderNode.on('create-order', event => {
+  // Process order creation
+  const orderId = generateOrderId();
+  // Emit a follow-up event
+  orderNode.broadcast({
+    type: 'inventory-check',
+    payload: { orderId, items: event.payload.items }
+  });
+  return { orderId, status: 'processing' };
+});
 
-*   **Autonomous Nodes (`HappenNode`):** Independent actors managing their own state, identity (via key pairs), and event interactions.
-*   **Flexible Event Bus (`PatternEmitter`):** Wraps any standard event emitter to provide powerful pattern matching (`*`, `{alt1,alt2}`) for event subscriptions, going beyond simple type matching.
-*   **Built-in Cryptography:** Automatic Ed25519 signing and verification of events using injected crypto modules.
-*   **Observability Hooks:** Built-in support for `EventObserver` and `EventTracer` allows deep insights into event flow and system behavior, crucial for debugging and testing complex interactions.
-*   **Cross-Environment Ready:** Designed and tested to work consistently across Node.js, Deno, Bun, and even cross-tab in modern web browsers.
-*   **Lifecycle Hooks:** (See Docs) Tap into events at critical points for custom logic.
-*   **Advanced Patterns:** (See Docs) Discover patterns for networking, state management, error handling, and more.
-
-## Prerequisites
-
-To build and run the included examples and tests, you will need one of the following:
-
-*   **Node.js:** Includes `npm` (used for running scripts defined in `package.json`).
-*   **Deno:** Required for the Deno example test.
-*   **Bun:** Required for the Bun example test.
-
-## Getting Started (Local Dev)
-
-Installation involves cloning the repository:
-
-```bash
-git clone <repository-url>
-cd happen
-```
-
-## Building the Project
-
-The project uses TypeScript and needs to be compiled to JavaScript.
-
-```bash
-npm run build
-```
-
-This command performs the following steps:
-
-1.  **`tsc`**: Compiles TypeScript files from `src/` and `examples/` into JavaScript ES Modules in the `dist/` directory.
-2.  **`node ./postbuild.cjs`**: Adds `.js` extensions to relative import paths within `dist/` for Node.js ESM compatibility.
-3.  **`mkdir -p ... && cp ...`**: Copies the browser example's `index.html` into `dist/`.
-
-## Running Tests
-
-The test suite validates the framework's functionality across different JavaScript runtimes by **testing the compiled output** in the `dist/` directory.
-
-```bash
-npm run test
-```
-
-This command executes the `run-tests.sh` script:
-
-1.  Builds the project using `npm run build`.
-2.  Runs examples against the compiled `dist/` output using `node`, `deno run`, and `bun run`.
-3.  Provides instructions for the **manual browser test**, which verifies cross-tab communication via `BroadcastChannel`:
-    *   Serve the project root (e.g., `npx serve .`).
-    *   Open `http://localhost:3000/dist/examples/browser-basic/index.html` (adjust port) in **two separate tabs**.
-    *   Follow UI instructions (Init A in Tab 1, Init B in Tab 2, Emit Ping from Tab 1).
-    *   Check the **Tab 2 console** for `TEST_RESULT: PASS`.
-
-## Runtime Module Injection & Node Creation
-
-Happen uses dependency injection for its core runtime components:
-
-1.  **`ICrypto`**: Handles cryptographic operations (key generation, signing, verification). Implementations exist for Node.js/Bun (`NodeJsCrypto`), Deno (`DenoCrypto`), and Browsers (`BrowserCrypto`).
-2.  **`IHappenEmitter`**: Provides the underlying event emission and subscription mechanism. Implementations often wrap standard emitters like Node.js `EventEmitter` (`NodeJsEventEmitter`), browser `BroadcastChannel` (`BrowserEventEmitter`), or Deno's `EventEmitter`. The `PatternEmitter` wraps a base `IHappenEmitter` to add wildcard/pattern matching capabilities.
-
-To simplify node creation and ensure consistent module usage, use the `createHappenContext` factory:
-
-```typescript
-import { createHappenContext } from './src/core/HappenNode';
-import { NodeJsCrypto } from './src/runtime/NodeJsCrypto';
-import { NodeJsEventEmitter } from './src/runtime/NodeJsEventEmitter';
-import { PatternEmitter } from './src/core/PatternEmitter';
-import type { HappenRuntimeModules } from './src/core/runtime-modules';
-
-// 1. Define the runtime modules
-const crypto = new NodeJsCrypto();
-const baseEmitter = new NodeJsEventEmitter();
-const happenEmitter = new PatternEmitter(baseEmitter);
-const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
-
-// 2. Create the context factory
-const createNode = createHappenContext(runtimeModules);
-
-// 3. Use the factory to create nodes
-const nodeA = createNode({ id: 'NodeA', initialState: { status: 'idle' } });
-const nodeB = createNode({ id: 'NodeB', initialState: { counter: 0 } });
-```
-
-This pattern ensures all nodes created via `createNode` share the same crypto implementation and emitter instance, simplifying setup and promoting consistency.
-
-## Basic Usage Example
-
-```typescript
-// Simplified example - see /examples for more details
-import { createHappenContext, HappenNode } from './src/core/HappenNode';
-import { NodeJsCrypto } from './src/runtime/NodeJsCrypto';
-import { NodeJsEventEmitter } from './src/runtime/NodeJsEventEmitter';
-import { PatternEmitter } from './src/core/PatternEmitter';
-import type { HappenEvent } from './src/core/event';
-import type { HappenRuntimeModules } from './src/core/runtime-modules';
-
-async function main() {
-    // 1. Setup Runtime Modules & Context
-    const crypto = new NodeJsCrypto();
-    const baseEmitter = new NodeJsEventEmitter();
-    const happenEmitter = new PatternEmitter(baseEmitter);
-    const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
-    const createNode = createHappenContext(runtimeModules);
-
-    // 2. Create & Initialize Nodes using the factory
-    const nodeA = createNode({ id: 'NodeA', initialState: {} });
-    const nodeB = createNode({ id: 'NodeB', initialState: { counter: 0 } });
-    // Nodes need initialization for cryptographic keys
-    await Promise.all([nodeA.init(), nodeB.init()]);
-
-    // 3. Subscribe to Events
-    nodeB.on('increment', (event: HappenEvent) => {
-        console.log(`[NodeB] Received '${event.type}' from ${event.metadata.sender}`);
-        // Ensure state update is safe
-        const currentState = nodeB.getState();
-        if (typeof currentState.counter === 'number') {
-             nodeB.setState({ counter: currentState.counter + 1 });
-        }
+// Nodes communicate through events
+inventoryNode.on('inventory-check', event => {
+  const { orderId, items } = event.payload;
+  const allAvailable = checkInventory(items);
+  
+  if (allAvailable) {
+    inventoryNode.broadcast({
+      type: 'payment-request',
+      payload: { orderId, items }
     });
+  } else {
+    inventoryNode.broadcast({
+      type: 'order-failed',
+      payload: { orderId, reason: 'inventory-unavailable' }
+    });
+  }
+});
+```
 
-    // 4. Emit an Event
-    console.log('[NodeA] Emitting increment...');
-    await nodeA.emit({ type: 'increment', payload: {} }); // Payload is optional
+## Core Philosophy
 
-    // Wait briefly for event processing
-    await new Promise(resolve => setTimeout(resolve, 50));
-    console.log(`[NodeB] Final counter: ${nodeB.getState().counter}`); // Output: 1
+Happen embraces a philosophy of radical simplicity:
 
-    // Clean up listeners if needed (e.g., in long-running apps)
-    // nodeB.destroy(); // Destroys the node and its listeners
+- **Radical Minimalism**: Only include what's absolutely essential
+- **Pure Causality**: Everything in a Happen system happens because of something else, creating natural causal chains
+- **Decentralized Intelligence**: Smart systems emerge from simple nodes making local decisions
+- **Composable Simplicity**: Complex behavior emerges from composing simple, understandable parts
+- **Runtime Transparency**: Direct access to the underlying runtime environments
+
+## Features
+
+### Core Capabilities
+
+- **Event-Driven Architecture**: Everything happens through structured events
+- **Pure Causality Model**: Events naturally form causal chains
+- **Three Communication Patterns**: System-wide broadcasting, targeted broadcasting, and direct request-response
+- **Implicit Contracts**: Node interfaces emerge naturally from event patterns
+- **Runtime Transparency**: Direct access to native runtime capabilities
+
+### Latest Features (v2.0)
+
+#### Unified Agentic Runtime
+
+```javascript
+const agentNode = createNode('reasoning-agent', {
+  capabilities: ['reasoning', 'planning', 'memory'],
+  model: 'local-llm',
+  contextWindow: 16000,
+  systemPrompt: 'You are a helpful assistant...'
+});
+
+// Agent automatically processes relevant events
+agentNode.on('user-query', async (event) => {
+  // Agent reasoning occurs within the node
+  const response = await agentNode.think({
+    query: event.payload.text,
+    context: event.payload.context
+  });
+  
+  // Emit the response as an event
+  agentNode.broadcast({
+    type: 'agent-response',
+    payload: response
+  });
+});
+```
+
+#### Enhanced Lifecycle Hooks
+
+```javascript
+// Register hooks for different lifecycle stages
+myNode.registerHooks(
+  'user-*',
+  {
+    preEmit: event => {
+      // Add metadata before sending
+      event.metadata.emitTimestamp = Date.now();
+      return event;
+    },
+    preHandle: event => {
+      // Validate payload before handling
+      if (!event.payload.userId) throw new Error('Missing userId');
+    },
+    postHandle: (event, handlerError) => {
+      // Log after handling
+      if (handlerError) console.error('Handler failed', handlerError);
+    }
+  },
+  { priority: 10 }
+);
+```
+
+#### Event Logging and Replay
+
+```javascript
+// Initialize workflow module with logging and replay
+const workflows = createWorkflows({
+  features: {
+    logging: true,
+    replay: true
+  },
+  logging: {
+    patterns: ['domain-*', 'user-*'],
+    excludePatterns: ['heartbeat-*']
+  }
+});
+
+// Replay events for debugging or recovery
+workflows.replay({
+  filter: {
+    correlationId: 'order-123',
+    timeRange: {
+      start: '2023-05-01T00:00:00Z',
+      end: '2023-05-02T00:00:00Z'
+    }
+  },
+  options: {
+    speed: 1.0,
+    destination: 'original'
+  }
+});
+```
+
+#### Unified Event Space (Distributed Runtime)
+
+```javascript
+// Create a node with distributed capabilities
+const distributedNode = createNode('remote-service', {
+  transport: {
+    type: 'nats',
+    connectionString: 'nats://localhost:4222',
+    subjects: {
+      subscribe: ['orders.*', 'inventory.*'],
+      publish: 'shipping.*'
+    }
+  }
+});
+
+// Code remains identical whether nodes are local or remote
+const response = await orderNode.request(inventoryNode, {
+  type: 'check-inventory',
+  payload: { items }
+});
+```
+
+#### Agentic Memory System
+
+```javascript
+// Create a memory node
+const memoryNode = createNode('memory-service');
+
+// Initialize memory system with vector capabilities
+const memory = initializeMemorySystem({
+  vectorStore: 'chroma',
+  graphEnabled: true,
+  kvStore: 'embedded',
+  episodicEnabled: true
+});
+
+// Store and retrieve memories through events
+memoryNode.on('store-memory', async (event) => {
+  const { content, type, metadata } = event.payload;
+  const memoryId = await memory.store(content, type, metadata);
+  return { memoryId };
+});
+
+memoryNode.on('retrieve-memory', async (event) => {
+  const { query, filters, type } = event.payload;
+  const memories = await memory.retrieve(query, filters, type);
+  return { memories };
+});
+```
+
+#### Composable Error Handling
+
+```javascript
+// Compose multiple error handlers
+paymentNode.registerHooks('payment-process', {
+  error: [
+    createCircuitBreakerHook({ threshold: 5, resetTimeout: 30000 }),
+    createRetryHook({ maxRetries: 3, backoff: 'exponential' }),
+    createFallbackServiceHook({ service: backupPaymentService }),
+    createDeadLetterHook({ queue: 'failed-payments' })
+  ]
+});
+```
+
+#### Built-in Security
+
+```javascript
+// Security is an inherent property of nodes
+const paymentNode = createNode('payment-service', {
+  security: {
+    level: 'high',
+    accessControl: {
+      canReceive: {
+        'order-submitted': ['order-service', 'admin-service'],
+        'refund-requested': ['customer-service']
+      },
+      roles: ['finance']
+    }
+  }
+});
+```
+
+## Installation
+
+```bash
+npm install happen-framework
+```
+
+## Quick Start
+
+```javascript
+import { createNode } from 'happen-framework';
+
+// Create nodes
+const userNode = createNode('user-service');
+const notificationNode = createNode('notification-service');
+
+// Handle events
+userNode.on('user-registered', event => {
+  const { email, name } = event.payload;
+  
+  // Store user (implementation omitted)
+  storeUser({ email, name });
+  
+  // Emit welcome event
+  userNode.broadcast({
+    type: 'welcome-new-user',
+    payload: { email, name }
+  });
+});
+
+// Handle notifications
+notificationNode.on('welcome-new-user', async event => {
+  const { email, name } = event.payload;
+  
+  // Send welcome email
+  await sendEmail({
+    to: email,
+    subject: `Welcome to our platform, ${name}!`,
+    body: createWelcomeEmailBody(name)
+  });
+  
+  // Emit notification sent event
+  notificationNode.broadcast({
+    type: 'notification-sent',
+    payload: { type: 'welcome', recipient: email }
+  });
+});
+
+// Start the system
+function startSystem() {
+  console.log('System initialized and ready');
+  
+  // Simulate a registration
+  userNode.receive({
+    type: 'user-registered',
+    payload: {
+      email: 'jane@example.com',
+      name: 'Jane Doe'
+    }
+  });
 }
 
-main().catch(console.error);
+startSystem();
 ```
 
-## Dive Deeper
+## Design Decisions
 
-Explore the [**Full Documentation**](https://insert-name-here.gitbook.io/happen) to learn about:
+### Radical Simplicity as Design Philosophy
 
-*   Event Lifecycle Hooks
-*   Advanced Communication Patterns
-*   Identity Management
-*   Networking Strategies
-*   Distributed State Management Approaches
-*   Error Handling Techniques
-*   Integrating Third-Party Modules
-*   And much more!
+Happen embraces the philosophy that true power emerges from simplicity rather than complexity. The framework provides just two fundamental primitives—Nodes and Events—that combine to create systems of surprising power and flexibility.
+
+### Causal Event Web
+
+Happen's most distinctive aspect is its embrace of pure causality as its organizing principle:
+
+- Events contain references to their causal predecessors
+- Every event has a unique identifier referenced by its dependents
+- These references form a complete causal web that defines system behavior
+
+```javascript
+// An event naturally references its causal predecessors
+{
+  type: 'order-shipped',
+  payload: {
+    orderId: 'ORD-123',
+    trackingNumber: 'TRK-456'
+  },
+  metadata: {
+    id: 'evt-789',                 // Unique identifier
+    sender: 'shipping-node',       // Origin node
+    causationId: 'evt-456',        // Direct cause (payment confirmation)
+    correlationId: 'order-123'     // Overall transaction
+  }
+}
+```
+
+### Event-Driven State Management
+
+Rather than providing complex state management primitives, Happen treats state as an emergent property of event flow:
+
+- Nodes maintain state and change it in response to events
+- State can be rebuilt by replaying events
+- No special state management primitives needed
+
+### Security as a First-Class Primitive
+
+Security is not a separate layer but an inherent property of nodes and events:
+
+- Every node has built-in cryptographic identity
+- Events carry proof of their origin and integrity
+- Access control is applied through a hybrid system-node model
+
+### Runtime Transparency
+
+Happen is a coordination layer for events—the runtime belongs to your code:
+
+- No framework-specific abstractions between your code and the runtime
+- Direct access to runtime capabilities
+- No "Happen way" to use the runtime—just use it directly
+
+## Use Cases
+
+Happen is ideal for:
+
+- **Agentic Applications**: Building systems of autonomous agents with specialized capabilities
+- **Event-Driven Architectures**: Creating flexible systems with decoupled components
+- **Distributed Applications**: Building systems that span multiple processes or machines
+- **Complex Workflows**: Managing complex business processes across multiple domains
+- **Reactive Systems**: Building systems that respond naturally to changes and events
+
+## Roadmap
+
+Our current focus areas:
+
+- Enhanced agentic capabilities for LLM integration
+- Additional transport options for specialized deployment scenarios
+- Extended tooling for debugging and monitoring
+- Performance optimizations for high-throughput scenarios
+
+## Examples
+
+Check out the [examples directory](examples/) for more detailed examples:
+
+- Basic Agent System
+- Multi-Agent Collaboration
+- Event Sourcing Pattern
+- Distributed Processing
+- Agentic Memory Usage
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ## License
 
-MIT License
+MIT

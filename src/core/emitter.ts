@@ -1,13 +1,21 @@
-import type { HappenEvent } from './event';
+import { HappenEvent } from './event';
 
-/** Function signature for an event handler/listener. */
-export type HappenListener<T = any> = (event: HappenEvent<T>) => void | Promise<void>;
+// Define a type for the listener function
+export type HappenListener<P = any> = (event: HappenEvent<P>) => void | Promise<void>;
 
-/** Function signature for an event observer. */
+// Define a type for the event observer function
 export type EventObserver = (event: HappenEvent<any>) => void | Promise<void>;
 
-/** Use a symbol for the generic listener to avoid clashes with string event types */
-export const GENERIC_EVENT_SIGNAL = Symbol.for('happenInternalGenericEvent');
+// Type for the disposable object returned by `on` methods that support it
+export interface IHappenListenerDisposable {
+  dispose: () => void | Promise<void>;
+}
+
+// Options for creating an emitter
+export interface EmitterOptions {
+  nodeId: string;
+  // Add other common options here if needed
+}
 
 /**
  * Defines the interface for the underlying event communication mechanism used by Happen nodes.
@@ -19,7 +27,7 @@ export interface IHappenEmitter {
    * @param eventType The specific type of the event being emitted.
    * @param event The full event object.
    */
-  emit(eventType: string, event: HappenEvent<any>): void;
+  emit(eventType: string, event: HappenEvent<any>): void | Promise<void>;
 
   /**
    * Registers a listener for events.
@@ -28,15 +36,26 @@ export interface IHappenEmitter {
    *
    * @param eventName The event name or pattern to listen for (interpretation depends on implementation).
    * @param listener The function to call when the event occurs.
+   * @returns A disposable object or void, depending on the implementation.
    */
-  on(eventName: string, listener: HappenListener<any>): void;
+  on(eventName: string, listener: HappenListener<any>): void | IHappenListenerDisposable | Promise<void | IHappenListenerDisposable>;
 
   /**
-   * Removes a listener.
+   * Removes a listener. (Optional for implementations where `on` returns a disposable).
    * @param eventName The event name or pattern.
    * @param listener The listener function to remove.
    */
-  off?(eventName: string, listener: HappenListener<any>): void;
+  off?(eventName: string, listener: HappenListener<any>): void | Promise<void>;
+
+  /**
+   * Sends a request and expects a response. (Optional)
+   * @param eventType The event type for the request.
+   * @param event The event object containing the request payload.
+   * @param timeoutMs Timeout in milliseconds to wait for a response.
+   * @returns A promise resolving with the response event or rejecting on timeout/error.
+   */
+  request?<Req = any, Res = any>(eventType: string, event: HappenEvent<Req>, timeoutMs?: number): Promise<HappenEvent<Res>>;
+
 
   /**
    * Registers a passive observer that receives all events flowing through this emitter.
@@ -46,5 +65,10 @@ export interface IHappenEmitter {
    * @param observer The observer function to register.
    * @returns A dispose function to remove the observer.
    */
-  addObserver(observer: EventObserver): () => void;
-} 
+  addObserver(observer: EventObserver): () => void | Promise<() => void>;
+
+  /**
+   * Optional method to clean up resources used by the emitter.
+   */
+  destroy?(): void | Promise<void>;
+}

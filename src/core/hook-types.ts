@@ -1,7 +1,8 @@
 // src/core/hook-types.ts
 
 import type { HappenEvent } from './event';
-import type { HappenNode } from './node';
+// import { Node } from './HappenNode';
+import type { HappenNode } from './HappenNode';
 
 /**
  * Represents the context object passed to hook functions.
@@ -9,15 +10,15 @@ import type { HappenNode } from './node';
 export interface HookContext<S = any, T = any> {
     /** The event that triggered this lifecycle point. */
     readonly event: HappenEvent<T>;
-    /** The node's state before the event (available in most hooks). */
+    /** The node's state *before* the event or state change. */
     readonly currentState: S;
-    /** The node's state after the event (only available in `afterStateChange`). */
+    /** The node's state *after* a state change (only available in `afterStateChange`). */
     readonly newState?: S;
-    /** Function to call to halt further processing for the current lifecycle point and prevent the associated core action. */
+    /** Function to call to halt further processing (e.g., stop state change, stop subsequent hooks). Effect depends on lifecycle point. */
     stop: () => void;
     /** Read-only flag indicating if stop() has been called. */
     readonly isStopped: boolean;
-    /** If the handler threw an error (only available in `postHandle`). */
+    /** If the handler threw an error (available in `postHandle` and `onError`). */
     readonly handlerError?: Error;
     // Add other potential context properties here, e.g., nodeId?
 }
@@ -37,7 +38,8 @@ export type LifecyclePoint =
     | 'preHandle'
     | 'postHandle'
     | 'preStateChange'
-    | 'afterStateChange';
+    | 'afterStateChange'
+    | 'onError';
 
 /**
  * Structure for defining hooks for various lifecycle points within a single registration.
@@ -48,6 +50,7 @@ export interface EventHooks<S = any, T = any> {
     postHandle?: HookFunction<S, T> | HookFunction<S, T>[];
     preStateChange?: HookFunction<S, T> | HookFunction<S, T>[];
     afterStateChange?: HookFunction<S, T> | HookFunction<S, T>[];
+    onError?: HookFunction<S, T> | HookFunction<S, T>[];
 }
 
 /**

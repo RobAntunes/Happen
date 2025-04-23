@@ -1,7 +1,10 @@
-import { IHappenEmitter, HappenListener, EventObserver, GENERIC_EVENT_SIGNAL } from './emitter';
+import { IHappenEmitter, HappenListener, EventObserver } from './emitter';
 import type { HappenEvent } from './event';
 import type { IEventEmitter } from './runtime-modules'; // Import the interface
 import { compilePatternToRegex } from '../utils/patternUtils'; // Import the utility
+
+// Define a local constant for the internal signal
+const GENERIC_EVENT_SIGNAL = Symbol('happen_generic_event_signal');
 
 interface PatternListenerEntry {
     pattern: string;

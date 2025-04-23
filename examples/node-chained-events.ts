@@ -1,4 +1,5 @@
-import { HappenNode, createHappenContext, NodeOptions } from '../src/core/HappenNode';
+import { HappenNode, NodeOptions } from "../src/core/HappenNode";
+import { createHappenContext } from "../src/core/factory";
 import { NodeJsCrypto } from '../src/runtime/NodeJsCrypto';
 import { NodeJsEventEmitter } from '../src/runtime/NodeJsEventEmitter';
 import { EventEmitter } from 'node:events';
@@ -8,128 +9,137 @@ import { PatternEmitter } from '../src/core/PatternEmitter';
 import { createConsoleObserver } from '../src/observability/observer';
 import { createEventTracer } from '../src/observability/tracer';
 
-async function runChainedExample() {
-    console.log("--- Chained Events Example Start ---");
+async function runExample() {
+    console.log("--- Node Chained Events Example Start ---");
+    let nodeA: HappenNode | null = null;
+    let nodeB: HappenNode | null = null;
+    let nodeC: HappenNode | null = null;
+    let disposeB: (() => void) | null = null;
+    let disposeC: (() => void) | null = null;
+    const crypto = await import('node:crypto');
 
-    // 1. Setup Runtime Modules & Context/Factory
-    const crypto = new NodeJsCrypto();
-    const baseEmitter = new EventEmitter() as IEventEmitter;
-    baseEmitter.setMaxListeners(30);
-    const happenEmitter = new PatternEmitter(baseEmitter);
-    const runtimeModules: HappenRuntimeModules = { crypto, emitterInstance: happenEmitter };
-    const createNode = createHappenContext(runtimeModules);
+    try {
+        // 1. Setup Runtime Modules & Context/Factory
+        const runtimeModules = getDefaultNodeRuntimeModules();
+        const createNode = createHappenContext(runtimeModules);
+        console.log("HappenContext created with default PatternEmitter.");
 
-    // Add Observer (optional, quieter config)
-    const disposeObserver = happenEmitter.addObserver(createConsoleObserver({ prefix: '[O]', logPayload: false, logMetadata: false }));
+        // 2. Create Nodes
+        nodeA = createNode({ id: 'ChainedNodeA', initialState: { status: 'idle' } });
+        nodeB = createNode({ id: 'ChainedNodeB', initialState: { eventACount: 0 } });
+        nodeC = createNode({ id: 'ChainedNodeC', initialState: { eventBCount: 0 } });
 
-    // Add Tracer to capture the whole flow (* pattern)
-    const tracer = createEventTracer('*', happenEmitter);
-    console.log("Tracer attached for * events.");
+        // 3. Initialize Nodes
+        await Promise.all([nodeA.init(), nodeB.init(), nodeC.init()]);
+        console.log("Nodes initialized.");
 
-    // 2. Create Nodes using the factory
-    const serviceA = createNode({ id: 'ServiceA', initialState: {} });
-    const serviceB = createNode({ id: 'ServiceB', initialState: {} });
-    const serviceC = createNode({ id: 'ServiceC', initialState: {} });
+        // 4. Setup Listeners
+        // Node B listens for event-A
+        disposeB = nodeB.on(
+            'event-A',
+            // Make handler async, propagate signal request
+            async (event: HappenEvent<{ value: number }>) => {
+                console.log(`\n[NodeB] Received event-A (${event.metadata.id}), value: ${event.payload.value}`);
+                const currentBState = nodeB!.getState();
+                nodeB!.setState({ eventACount: currentBState.eventACount + 1 });
 
-    // 3. Initialize Nodes
-    console.log("\nInitializing services...");
-    await Promise.all([serviceA.init(), serviceB.init(), serviceC.init()]);
-    console.log("Services initialized.");
+                // Prepare event-B, propagating context (including signal request)
+                const eventBId = crypto.randomUUID();
+                const eventBMetadata = { 
+                    id: eventBId,
+                    causationId: event.metadata.id, // Link cause to event-A
+                    correlationId: event.metadata.correlationId, // Keep original correlation
+                    context: event.metadata.context // <<<<< Propagate context
+                };
+                
+                console.log('[NodeB] Broadcasting event-B...');
+                await nodeB!.broadcast({
+                    type: 'event-B',
+                    payload: { derivedValue: event.payload.value * 2 },
+                    metadata: eventBMetadata
+                });
+            }
+        );
 
-    // Correlation ID for the entire interaction
-    const correlationId = `txn-${crypto.randomUUID().substring(0, 8)}`;
-    console.log(`\nStarting interaction with Correlation ID: ${correlationId}`);
+        // Node C listens for event-B
+        disposeC = nodeC.on(
+            'event-B',
+            // Make handler async, send final signal
+            async (event: HappenEvent<{ derivedValue: number }>) => {
+                console.log(`\n[NodeC] Received event-B (${event.metadata.id}), derivedValue: ${event.payload.derivedValue}`);
+                const currentCState = nodeC!.getState();
+                nodeC!.setState({ eventBCount: currentCState.eventBCount + 1 });
 
-    // 4. Setup Listeners
-    let event1Id: string | undefined;
-    let event2Id: string | undefined;
+                // Check for and send completion signal if requested (propagated from A)
+                const signalId = event.metadata.context?.signalOnCompletion as string | undefined;
+                if (signalId) {
+                    console.log(`[NodeC] Sending completion signal: _signal.${signalId}`);
+                    // Use broadcast from Node C
+                    await nodeC!.broadcast({ type: `_signal.${signalId}` }); 
+                }
+            }
+        );
+        console.log("Listeners ready.");
 
-    const disposeB = serviceB.on('request-data', async (event: HappenEvent<{ requestInfo: string }>) => {
-        console.log(`\n[ServiceB] Received 'request-data' (ID: ${event.metadata.id}). Processing...`);
-        event1Id = event.metadata.id;
-        const processedData = `Processed:${event.payload.requestInfo}`;
+        // 5. Node A Broadcasts event-A, requesting signal
+        console.log("\nNodeA broadcasting event-A...");
+        const eventAId = crypto.randomUUID();
+        const signalId = crypto.randomUUID(); // Signal for the *entire chain*
+        const correlationId = crypto.randomUUID(); // Correlation for the whole interaction
 
-        // Emit the next event in the chain
-        console.log("[ServiceB] Emitting 'process-data'...");
-        event2Id = crypto.randomUUID(); // Generate ID for the new event
-        await serviceB.emit({
-            type: 'process-data',
-            payload: { result: processedData },
+        // Setup promise and listener for the completion signal *before* broadcasting
+        const signalPromise = new Promise<void>((resolve, reject) => {
+            let disposeSignalListener: (() => void) | null = null;
+            const signalTimeoutId = setTimeout(() => {
+                 if (disposeSignalListener) disposeSignalListener(); 
+                 reject(new Error(`Timeout waiting for chain completion signal ${signalId}`));
+            }, 2000); // Timeout (e.g., 2 seconds)
+
+            const signalEventType = `_signal.${signalId}`;
+            // Node A listens for the signal sent by Node C
+            disposeSignalListener = nodeA!.on(signalEventType, (signalEvent: HappenEvent<any>) => {
+                console.log(`[NodeA] Received chain completion signal ${signalEventType}`);
+                clearTimeout(signalTimeoutId);
+                if (disposeSignalListener) disposeSignalListener(); // Clean up listener
+                resolve();
+            });
+        });
+
+        // Broadcast event-A, including signal request and correlation ID
+        await nodeA.broadcast({
+            type: 'event-A',
+            payload: { value: 10 },
             metadata: {
-                id: event2Id,
-                correlationId: event.metadata.correlationId, // Carry correlationId forward
-                causationId: event.metadata.id // Link to the event that caused this one
+                id: eventAId,
+                correlationId: correlationId, // Correlate the chain
+                context: { signalOnCompletion: signalId } // Request signal
             }
         });
-        console.log(`[ServiceB] Emitted 'process-data' (ID: ${event2Id})`);
-    });
+        console.log(`[NodeA] Event ${eventAId} broadcasted, waiting for signal ${signalId}.`);
+        await nodeA.setState({ status: 'event-A sent' });
 
-    const disposeC = serviceC.on('process-data', (event: HappenEvent<{ result: string }>) => {
-        console.log(`\n[ServiceC] Received 'process-data' (ID: ${event.metadata.id}). Final step.`);
-        console.log(`  Result: ${event.payload.result}`);
-        console.log(`  Correlation: ${event.metadata.correlationId}`);
-    });
+        // 6. Wait for completion signal from Node C
+        console.log("\nWaiting for chain completion signal from Node C...");
+        await signalPromise; // Wait for the signal
+        // await new Promise(resolve => setTimeout(resolve, 100)); // Old timeout
 
-    console.log("\nListeners ready.");
+        // 7. Verification
+        const finalStateA = nodeA.getState();
 
-    // 5. Initiate the Chain from Service A
-    console.log("\nInitiating chain from Service A...");
-    const initialEventId = crypto.randomUUID();
-    await serviceA.emit({
-        type: 'request-data',
-        payload: { requestInfo: 'input data' },
-        metadata: {
-            id: initialEventId,
-            correlationId: correlationId // Start the correlation
-        }
-    });
-    console.log(`[ServiceA] Emitted 'request-data' (ID: ${initialEventId})`);
+        // 8. Cleanup
+        console.log("\nCleaning up...");
+        disposeB();
+        disposeC();
+        console.log("Cleanup complete.");
 
-    // Add a delay for processing and tracing
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // 6. Validate Trace
-    console.log("\nValidating trace...");
-    const trace = tracer.getTrace(correlationId);
-    if (trace) {
-        console.log(`  Trace found for Correlation ID: ${correlationId}`);
-        console.log(`  Event Path: ${trace.path.join(' -> ')}`);
-        console.log(`  Events captured: ${trace.events.length}`);
-        trace.events.forEach((ev: HappenEvent<any>, index: number) => {
-            console.log(`    [${index}] Type: ${ev.type}, ID: ${ev.metadata.id}, Sender: ${ev.metadata.sender}`);
-        });
-
-        // Basic Assertions (in a real test, use an assertion library)
-        // Current tracer path only includes senders. C receives but doesn't send.
-        const expectedPath = ['ServiceA', 'ServiceB'].join(' -> '); // Corrected expected path
-        const actualPath = trace.path.join(' -> ');
-        console.log(`  ASSERT PATH: ${actualPath === expectedPath ? 'PASS' : 'FAIL!'} (Expected: ${expectedPath}, Got: ${actualPath})`);
-        const expectedEventCount = 2;
-        console.log(`  ASSERT EVENT COUNT: ${trace.events.length === expectedEventCount ? 'PASS' : 'FAIL!'} (Expected: ${expectedEventCount}, Got: ${trace.events.length})`);
-
-        // Determine overall pass/fail for the test
-        const pathPass = actualPath === expectedPath;
-        const countPass = trace.events.length === expectedEventCount;
-        const overallPass = pathPass && countPass;
-        console.log(`TEST_RESULT: ${overallPass ? 'PASS' : 'FAIL'}`); // Add explicit PASS/FAIL marker
-
-    } else {
-        console.error(`  Trace NOT FOUND for Correlation ID: ${correlationId}`);
-        console.log(`TEST_RESULT: FAIL`); // Ensure FAIL marker if trace not found
+        console.log("\n--- Node Chained Events Example End ---");
+    } catch (error) {
+        console.error("Chained example failed:", error);
+        process.exit(1);
     }
-
-    // 7. Cleanup
-    console.log("\nCleaning up...");
-    disposeB();
-    disposeC();
-    disposeObserver();
-    tracer.dispose();
-    console.log("Cleanup complete.");
-
-    console.log("\n--- Chained Events Example End ---");
 }
 
-runChainedExample().catch(error => {
+runExample().catch(error => {
     console.error("Chained example failed:", error);
     process.exit(1);
 });

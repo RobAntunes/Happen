@@ -8,3 +8,7 @@
 .env.production.local
 
 dist
+*-lock.*
+node_modules
+*.log
+*.log.*

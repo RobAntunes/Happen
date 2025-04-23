@@ -1,5 +1,6 @@
-import { HappenNode, createHappenContext, NodeOptions } from '../src/core/HappenNode';
-import { DenoCrypto } from '../src/runtime/DenoCrypto';
+import { HappenNode, NodeOptions } from "../src/core/HappenNode";
+import { createHappenContext } from "../src/core/factory"; // Import from factory
+import { DenoCrypto } from "../src/runtime/DenoCrypto";
 // Use Node compatible EventEmitter via deno std/node
 import { EventEmitter } from 'node:events';
 import type { IEventEmitter, HappenRuntimeModules } from '../src/core/runtime-modules';
@@ -7,6 +8,26 @@ import { PatternEmitter } from '../src/core/PatternEmitter';
 import type { HappenEvent } from '../src/core/event';
 import { createConsoleObserver } from '../src/observability/observer';
 import { createEventTracer } from '../src/observability/tracer';
+
+// --- Helper Function for Testing Async State Changes ---
+async function waitForState<S>(
+    node: HappenNode<S> | null, // Allow null check
+    predicate: (state: S) => boolean,
+    timeoutMs: number = 2000,
+    pollIntervalMs: number = 50
+): Promise<void> {
+    if (!node) throw new Error("waitForState: Provided node is null.");
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeoutMs) {
+        const currentState = node.getState();
+        if (predicate(currentState)) {
+            return; // Condition met
+        }
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+    }
+    throw new Error(`Timeout waiting for state condition on node ${node.id}`);
+}
+// --- End Helper ---
 
 // Basic Example: Two nodes communicating via Deno's node:events compatible EventEmitter
 
@@ -51,7 +72,7 @@ async function runDenoExample() {
         nodeB.setState({ count: nodeB.getState().count + 1 });
 
         console.log(`  -> [${nodeB.id}] Emitting 'event-b'...`);
-        await nodeB.emit({ 
+        await nodeB.broadcast({ 
             type: 'event-b', 
             payload: { value: 456 },
             metadata: { 
@@ -65,7 +86,7 @@ async function runDenoExample() {
     // 5. Node A Emits an Event
     console.log("\nNode A emitting 'event-a'...");
     const eventId = crypto.randomUUID();
-    await nodeA.emit({
+    await nodeA.broadcast({
         type: 'event-a',
         payload: { value: 123 },
         metadata: {
@@ -75,8 +96,9 @@ async function runDenoExample() {
     });
     console.log(`[${nodeA.id}] Event ${eventId} emitted.`);
 
-    // Wait for events
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Wait for events (specifically, wait for Node A to receive the response)
+    console.log("\nWaiting for event processing...");
+    await waitForState(nodeA, state => state.count === 1, 1000);
 
     // 6. Examine Trace
     console.log("\nExamining trace...");

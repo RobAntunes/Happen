@@ -1,17 +1,59 @@
 {
   "name": "happen-lib",
   "version": "0.1.0",
-  "description": "Glue with superpowers",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
-  "type": "module",
+  "description": "A TypeScript library for building reactive, event-driven systems based on the Happen spec.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "bash ./run-tests.sh",
-    "build": "tsc && node ./postbuild.cjs && mkdir -p dist/examples/browser-basic && cp examples/browser-basic/index.html dist/examples/browser-basic/"
+    "build": "tsc",
+    "test": "sh ./run-tests.sh",
+    "test:vitest": "vitest run",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\" \"examples/**/*.ts\"",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint",
+    "preversion": "npm run lint",
+    "version": "npm run format && git add -A src",
+    "postversion": "git push && git push --tags"
   },
-  "keywords": [],
-  "tsc-alias": { 
-    "resolveFullPaths": true, 
-    "verbose": true 
-  }
-} 
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/happen-lib.git"
+  },
+  "keywords": [
+    "happen",
+    "event-driven",
+    "reactive",
+    "typescript",
+    "state machine",
+    "distributed systems",
+    "communication patterns"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yourusername/happen-lib/issues"
+  },
+  "homepage": "https://github.com/yourusername/happen-lib#readme",
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "@typescript-eslint/parser": "^7.0.2",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "mem0ai": "^2.1.18",
+    "prettier": "^3.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "vitest": "^3.1.2"
+  },
+  "dependencies": {
+    "@types/uuid": "^10.0.0",
+    "nats": "^2.23.0",
+    "uuid": "^11.1.0"
+  },
+  "files": [
+    "dist/**/*"
+  ]
+}
