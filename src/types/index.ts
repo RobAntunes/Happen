@@ -114,6 +114,9 @@ export interface ViewCollection {
   [key: string]: {
     get<T, R>(selector: (state: T) => R): R;
   };
+  collect<T extends Record<string, any>>(selectors: {
+    [K in keyof T]: (state: any) => T[K]
+  }): T;
 }
 
 /**

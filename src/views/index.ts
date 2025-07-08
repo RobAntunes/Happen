@@ -112,6 +112,23 @@ export class ViewRegistry {
   }
 
   /**
+   * Get state from a node with selector (synchronous version)
+   */
+  getStateSync<T, R>(nodeId: ID, selector: (state: T) => R): R {
+    const node = this.nodes.get(nodeId);
+    if (!node) {
+      throw new Error(`Node ${nodeId} not found in view registry`);
+    }
+
+    try {
+      const state = node.state.get();
+      return selector(state as T);
+    } catch (error) {
+      throw new Error(`Failed to access state from node ${nodeId}: ${error}`);
+    }
+  }
+
+  /**
    * Collect state from multiple nodes
    */
   async collect<T extends Record<string, any>>(

@@ -110,17 +110,42 @@ export class NodeStateContainer<T> implements NodeState<T> {
    */
   private createLegacyViewCollection(): ViewCollection {
     const registry = getGlobalViewRegistry();
-    const legacyViews: ViewCollection = {};
+    const legacyViews: any = {
+      collect: <T extends Record<string, any>>(selectors: {
+        [K in keyof T]: (state: any) => T[K]
+      }): T => {
+        const result = {} as T;
+        
+        // Iterate through selectors and collect data from nodes
+        for (const [key, selector] of Object.entries(selectors)) {
+          // Find a node that matches the key
+          const nodeId = registry.getRegisteredNodes().find(id => 
+            id.toLowerCase().includes(key.toString().toLowerCase())
+          );
+          
+          if (nodeId) {
+            try {
+              // Use the registry's synchronous getStateSync method
+              const value = registry.getStateSync(nodeId, selector);
+              result[key as keyof T] = value as T[keyof T];
+            } catch {
+              // Silently handle errors, return undefined for that key
+              result[key as keyof T] = undefined as T[keyof T];
+            }
+          }
+        }
+        
+        return result;
+      }
+    };
     
     // Create proxy objects for each registered node
     for (const nodeId of registry.getRegisteredNodes()) {
       legacyViews[nodeId] = {
         get: <T, R>(selector: (state: T) => R): R => {
           try {
-            // This is a synchronous version for backward compatibility
-            // In a real implementation, this would need to be enhanced
-            // to handle async access properly
-            return registry.getState(nodeId, selector) as R;
+            // Use synchronous version for backward compatibility
+            return registry.getStateSync(nodeId, selector);
           } catch {
             return undefined as R;
           }
@@ -128,7 +153,7 @@ export class NodeStateContainer<T> implements NodeState<T> {
       };
     }
     
-    return legacyViews;
+    return legacyViews as ViewCollection;
   }
 }
 
