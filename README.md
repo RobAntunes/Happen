@@ -5,7 +5,7 @@
 [![npm version](https://img.shields.io/npm/v/@happen/core.svg)](https://www.npmjs.com/package/@happen/core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-blue.svg)](https://www.typescriptlang.org/)
-[![Coverage Status](https://img.shields.io/codecov/c/github/yourusername/happen.svg)](https://codecov.io/gh/yourusername/happen)
+[![Coverage Status](https://img.shields.io/codecov/c/github/yourusername/happen.svg)](https://codecov.io/gh/RobAntunes/Happen)
 
 ## 🎯 What is Happen?
 
