@@ -9,7 +9,6 @@ import { BaseTransportAdapter, ConnectionOptions } from './index';
  */
 export class NodeTransportAdapter extends BaseTransportAdapter {
   private natsConnection: any = null;
-  private natsClient: any = null;
   private activeSubscriptions = new Map<string, any>();
 
   constructor(options: ConnectionOptions) {
@@ -29,7 +28,7 @@ export class NodeTransportAdapter extends BaseTransportAdapter {
 
     try {
       // Dynamic import for Node.js NATS client
-      const { connect, StringCodec, JSONCodec } = await import('nats');
+      const { connect } = await import('nats');
       
       this.natsConnection = await connect({
         servers: this.options.servers,
@@ -38,14 +37,12 @@ export class NodeTransportAdapter extends BaseTransportAdapter {
         pass: this.options.pass || undefined,
         token: this.options.token || undefined,
         maxReconnectAttempts: this.options.maxReconnectAttempts,
-        reconnectDelayMS: this.options.reconnectDelayMs,
+        // reconnectDelayMs is our property, NATS may use different name
         timeout: this.options.timeout,
       });
 
-      this.natsClient = {
-        stringCodec: StringCodec(),
-        jsonCodec: JSONCodec(),
-      };
+      // Codecs will be imported when NATS is available
+      // const { StringCodec, JSONCodec } = await import('nats');
 
       // Setup connection event handlers
       this.setupConnectionHandlers();
@@ -78,7 +75,6 @@ export class NodeTransportAdapter extends BaseTransportAdapter {
     }
 
     this.natsConnection = null;
-    this.natsClient = null;
     this.activeSubscriptions.clear();
     this.setState('disconnected');
   }

@@ -105,13 +105,13 @@ describe('Event Continuum - Old Tests', () => {
         const handler2 = jest.fn();
         
         const branchHandler = flow.branch([
-          [(eventOrEvents, context) => {
+          [(eventOrEvents, _context) => {
             const event = Array.isArray(eventOrEvents) ? eventOrEvents[0] : eventOrEvents;
-            return event && (event.payload as any).type === 'A';
+            return !!(event && (event.payload as any).type === 'A');
           }, handler1],
-          [(eventOrEvents, context) => {
+          [(eventOrEvents, _context) => {
             const event = Array.isArray(eventOrEvents) ? eventOrEvents[0] : eventOrEvents;
-            return event && (event.payload as any).type === 'B';
+            return !!(event && (event.payload as any).type === 'B');
           }, handler2],
         ]);
 

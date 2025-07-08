@@ -434,6 +434,19 @@ export function getGlobalViewRegistry(): ViewRegistry {
 }
 
 /**
+ * Reset the global view registry (for testing)
+ */
+export function resetGlobalViewRegistry(): void {
+  if (globalViewRegistry) {
+    // Clear all nodes and cache
+    const nodes = globalViewRegistry.getRegisteredNodes();
+    nodes.forEach(nodeId => globalViewRegistry!.unregisterNode(nodeId));
+    globalViewRegistry.clearCache();
+  }
+  globalViewRegistry = null;
+}
+
+/**
  * Create an enhanced view collection
  */
 export function createViewCollection(registry?: ViewRegistry): EnhancedViewCollection {

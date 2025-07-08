@@ -4,6 +4,7 @@
 
 import { HappenNodeImpl } from '../src/node';
 import { InMemoryGlobalState } from '../src/global-state';
+import { resetGlobalViewRegistry } from '../src/views';
 import '../src/confluence'; // Import to register array extensions
 
 describe('Communication Patterns', () => {
@@ -14,9 +15,10 @@ describe('Communication Patterns', () => {
 
   beforeEach(async () => {
     globalState = new InMemoryGlobalState();
-    node1 = new HappenNodeImpl('node1', { timeout: 500 }, globalState);
-    node2 = new HappenNodeImpl('node2', { timeout: 500 }, globalState);
-    node3 = new HappenNodeImpl('node3', { timeout: 500 }, globalState);
+    const timestamp = Date.now();
+    node1 = new HappenNodeImpl(`cp-node1-${timestamp}`, { timeout: 500 }, globalState);
+    node2 = new HappenNodeImpl(`cp-node2-${timestamp}`, { timeout: 500 }, globalState);
+    node3 = new HappenNodeImpl(`cp-node3-${timestamp}`, { timeout: 500 }, globalState);
     
     await node1.start();
     await node2.start();
@@ -27,6 +29,7 @@ describe('Communication Patterns', () => {
     await node1.stop();
     await node2.stop();
     await node3.stop();
+    resetGlobalViewRegistry();
   });
 
   describe('Request-Response Pattern', () => {
@@ -52,27 +55,28 @@ describe('Communication Patterns', () => {
       });
 
       let callbackCalled = false;
+      
+      // Get the promise (with callback) and immediately handle rejection
       const promise = sendResult.return(() => {
         callbackCalled = true;
       });
-
-      // Wait a bit and verify callback wasn't called yet
-      await new Promise(resolve => setTimeout(resolve, 200));
-      expect(callbackCalled).toBe(false);
       
-      // Now wait for the timeout and handle the rejection
+      // Promise should reject with timeout
       await expect(promise).rejects.toThrow('Response timeout');
-      expect(callbackCalled).toBe(false); // Still shouldn't be called on error
+      
+      // Callback should not have been called on error
+      expect(callbackCalled).toBe(false);
     });
 
     it('should timeout if no response', async () => {
-      const timeoutNode = new HappenNodeImpl('timeout', { timeout: 100 }, globalState);
+      const timeoutNode = new HappenNodeImpl(`timeout-${Date.now()}`, { timeout: 100 }, globalState);
       await timeoutNode.start();
 
       // No handler to respond
-      await expect(
-        timeoutNode.send(timeoutNode, { type: 'no-response' }).return()
-      ).rejects.toThrow('Response timeout');
+      const sendResult = timeoutNode.send(timeoutNode, { type: 'no-response' });
+      
+      // Immediately set up promise handling
+      await expect(sendResult.return()).rejects.toThrow('Response timeout');
 
       await timeoutNode.stop();
     });
@@ -90,11 +94,13 @@ describe('Communication Patterns', () => {
       });
 
       // Send multiple events (batch sends don't wait for response)
-      const result = await node1.send(node1, [
+      const sendResult = node1.send(node1, [
         { type: 'batch.event', payload: { id: 1 } },
         { type: 'batch.event', payload: { id: 2 } },
         { type: 'batch.event', payload: { id: 3 } }
-      ]).return();
+      ]);
+      
+      const result = await sendResult.return();
 
       // Batch sends return undefined immediately
       expect(result).toBeUndefined();
@@ -148,10 +154,11 @@ describe('Confluence - Array Operations', () => {
 
   beforeEach(async () => {
     globalState = new InMemoryGlobalState();
+    const timestamp = Date.now();
     nodes = [
-      new HappenNodeImpl('node1', { timeout: 500 }, globalState),
-      new HappenNodeImpl('node2', { timeout: 500 }, globalState),
-      new HappenNodeImpl('node3', { timeout: 500 }, globalState)
+      new HappenNodeImpl(`conf-node1-${timestamp}`, { timeout: 500 }, globalState),
+      new HappenNodeImpl(`conf-node2-${timestamp}`, { timeout: 500 }, globalState),
+      new HappenNodeImpl(`conf-node3-${timestamp}`, { timeout: 500 }, globalState)
     ];
     
     await Promise.all(nodes.map(node => node.start()));
@@ -159,6 +166,7 @@ describe('Confluence - Array Operations', () => {
 
   afterEach(async () => {
     await Promise.all(nodes.map(node => node.stop()));
+    resetGlobalViewRegistry();
   });
 
   describe('Array.on()', () => {

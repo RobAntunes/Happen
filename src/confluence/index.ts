@@ -4,7 +4,7 @@
  * Handles array operations for both nodes and events with zero new methods
  */
 
-import { HappenNode, EventHandler, Pattern } from '../types';
+import { HappenNode, EventHandler, Pattern, SendResult } from '../types';
 
 /**
  * Extend Array prototype to support Happen operations
@@ -63,12 +63,12 @@ if (!Array.prototype.on) {
       throw new Error('send() can only be called on arrays of HappenNode instances');
     }
 
-    // Store promises for each send
-    const sendPromises = new Map<string, Promise<any>>();
+    // Store send results for each node
+    const sendResults = new Map<string, SendResult>();
     
     this.forEach(node => {
       const result = node.send(node, event);
-      sendPromises.set(node.id, result.return());
+      sendResults.set(node.id, result);
     });
 
     // Return object with return() method that collects all results
@@ -76,9 +76,9 @@ if (!Array.prototype.on) {
       return: async () => {
         const results: Record<string, any> = {};
         
-        for (const [nodeId, promise] of sendPromises) {
+        for (const [nodeId, sendResult] of sendResults) {
           try {
-            results[nodeId] = await promise;
+            results[nodeId] = await sendResult.return();
           } catch (error) {
             results[nodeId] = { error: error instanceof Error ? error.message : String(error) };
           }

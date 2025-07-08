@@ -51,6 +51,12 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
   private processing = 0;
   private identity: NodeIdentity | null = null;
   private keyPair: KeyPair | null = null;
+  private activeTimeouts = new Set<NodeJS.Timeout>();
+  private pendingResponses = new Map<string, {
+    reject: (error: Error) => void;
+    cleanup: () => void;
+    timeoutId: NodeJS.Timeout;
+  }>();
   
   constructor(
     name: string,
@@ -126,6 +132,7 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
     const cleanup = targetNode.on(responsePattern, (responseEventOrEvents) => {
       const responseEvent = Array.isArray(responseEventOrEvents) ? responseEventOrEvents[0] : responseEventOrEvents;
       cleanup(); // Unsubscribe after receiving response
+      this.pendingResponses.delete(fullEvent.id);
       if (responseResolve && responseEvent) {
         responseResolve(responseEvent.payload);
       }
@@ -135,23 +142,45 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
     // Set a timeout for the response
     const timeoutId = setTimeout(() => {
       cleanup();
+      this.activeTimeouts.delete(timeoutId);
+      this.pendingResponses.delete(fullEvent.id);
       if (responseReject) {
         responseReject(new Error('Response timeout'));
       }
     }, this.options.timeout);
     
+    // Track the timeout and pending response
+    this.activeTimeouts.add(timeoutId);
+    this.pendingResponses.set(fullEvent.id, {
+      reject: responseReject!,
+      cleanup,
+      timeoutId
+    });
+    
     // Clear timeout if response comes back
-    responsePromise.finally(() => clearTimeout(timeoutId));
+    responsePromise.finally(() => {
+      clearTimeout(timeoutId);
+      this.activeTimeouts.delete(timeoutId);
+      this.pendingResponses.delete(fullEvent.id);
+    });
     
     // Now emit the event
     targetNode.emit(fullEvent);
+    
+    // Immediately attach a catch handler to prevent unhandled rejections
+    // This will be overridden by the actual handler when return() is called
+    responsePromise.catch(() => {
+      // Silently ignore - the actual error handling will be done by the caller
+    });
     
     // Return SendResult with return() method
     return {
       return: (callback?: (result: any) => void) => {
         if (callback) {
-          responsePromise.then(callback).catch(() => {
-            // Don't call callback on error - let promise rejection handle it
+          // Create a new promise that handles the callback
+          return responsePromise.then((result) => {
+            callback(result);
+            return result;
           });
         }
         return responsePromise;
@@ -204,6 +233,20 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
    */
   async stop(): Promise<void> {
     this.running = false;
+    
+    // Clear all pending responses without rejecting them
+    // The promises already have catch handlers attached
+    this.pendingResponses.forEach(({ cleanup, timeoutId }) => {
+      clearTimeout(timeoutId);
+      cleanup();
+    });
+    this.pendingResponses.clear();
+    
+    // Clear all active timeouts
+    this.activeTimeouts.forEach(timeoutId => {
+      clearTimeout(timeoutId);
+    });
+    this.activeTimeouts.clear();
     
     // Wait for current processing to complete
     while (this.processing > 0) {

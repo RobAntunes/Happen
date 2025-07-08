@@ -4,7 +4,6 @@
 
 import { createHappen } from '../src/happen';
 import { 
-  ViewRegistry, 
   ViewUtils,
   createViewCollection,
   getGlobalViewRegistry
@@ -56,7 +55,7 @@ describe('Views System', () => {
 
   describe('ViewRegistry', () => {
     it('should register and unregister nodes', () => {
-      const registry = new ViewRegistry();
+      const registry = getGlobalViewRegistry();
       
       expect(registry.hasNode(customerNode.id)).toBe(true);
       expect(registry.hasNode(orderNode.id)).toBe(true);
@@ -132,6 +131,9 @@ describe('Views System', () => {
 
     it('should provide cache statistics', () => {
       const registry = getGlobalViewRegistry();
+      
+      // Clear any existing cache first
+      registry.clearCache();
       
       registry.cache('key1', 'value1', 1000);
       registry.cache('key2', 'value2', 2000);

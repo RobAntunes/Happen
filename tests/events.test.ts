@@ -25,11 +25,12 @@ describe('Events', () => {
     });
 
     it('should accept custom context', () => {
-      const event = createEvent('test.event', { data: 'test' }, {
+      const customContext: any = {
         causal: { 
           correlationId: 'corr-123'
         }
-      }, 'custom-node');
+      };
+      const event = createEvent('test.event', { data: 'test' }, customContext, 'custom-node');
       
       expect(event.context.causal.sender).toBe('custom-node');
       expect(event.context.causal.correlationId).toBe('corr-123');
@@ -61,27 +62,30 @@ describe('Events', () => {
     });
 
     it('should preserve correlation ID from parent', () => {
-      const parentEvent = createEvent('parent.event', {}, {
+      const parentContext: any = {
         causal: {
           correlationId: 'corr-456'
         }
-      });
+      };
+      const parentEvent = createEvent('parent.event', {}, parentContext);
       const childEvent = createCausalEvent(parentEvent, 'child.event', {});
       
       expect(childEvent.context.causal.correlationId).toBe('corr-456');
     });
 
     it('should allow overriding correlation ID', () => {
-      const parentEvent = createEvent('parent.event', {}, {
+      const parentContext: any = {
         causal: {
           correlationId: 'corr-456'
         }
-      });
-      const childEvent = createCausalEvent(parentEvent, 'child.event', {}, {
+      };
+      const parentEvent = createEvent('parent.event', {}, parentContext);
+      const childContext: any = {
         causal: {
           correlationId: 'new-corr-789'
         }
-      });
+      };
+      const childEvent = createCausalEvent(parentEvent, 'child.event', {}, childContext);
       
       expect(childEvent.context.causal.correlationId).toBe('new-corr-789');
     });
@@ -238,11 +242,12 @@ describe('Events', () => {
     });
 
     it('should preserve original context when not overridden', () => {
-      const originalEvent = createEvent('test.event', {}, {
+      const originalContext: any = {
         causal: {
           correlationId: 'corr-123'
         }
-      }, 'test-node');
+      };
+      const originalEvent = createEvent('test.event', {}, originalContext, 'test-node');
       const clonedEvent = cloneEvent(originalEvent);
       
       expect(clonedEvent.context.causal.correlationId).toBe('corr-123');

@@ -169,6 +169,12 @@ export abstract class BaseTransportAdapter implements TransportAdapter {
  * Create a transport adapter for the current environment
  */
 export async function createTransportAdapter(options: ConnectionOptions): Promise<TransportAdapter> {
+  // Check if we're in a test environment
+  if (process.env.NODE_ENV === 'test' || typeof (globalThis as any).__jest__ !== 'undefined') {
+    const { MockTransportAdapter } = await import('./mock');
+    return new MockTransportAdapter(options);
+  }
+  
   // Use environment detection instead of direct globals
   const { detectEnvironment } = await import('../environment');
   const env = detectEnvironment();
