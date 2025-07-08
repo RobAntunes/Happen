@@ -13,7 +13,7 @@ export function canonicalStringify(value: any): string {
 
     const seen = new WeakSet(); // Basic cycle detection
 
-    function replacer(key: string, val: any): any {
+    function replacer(_key: string, val: any): any {
         if (typeof val === 'object' && val !== null) {
             if (seen.has(val)) {
                 throw new Error('Cycle detected during canonical stringification');

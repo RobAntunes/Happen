@@ -1,17 +1,75 @@
 {
-  "name": "happen-lib",
+  "name": "@happen/core",
   "version": "0.1.0",
-  "description": "Glue with superpowers",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
-  "type": "module",
+  "description": "Universal event-driven communication framework - Simply productive",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "bash ./run-tests.sh",
-    "build": "tsc && node ./postbuild.cjs && mkdir -p dist/examples/browser-basic && cp examples/browser-basic/index.html dist/examples/browser-basic/"
+    "build": "tsc -p tsconfig.build.json",
+    "build:watch": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src tests --ext .ts",
+    "lint:fix": "eslint src tests --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist coverage",
+    "prepublishOnly": "npm run clean && npm run build && npm run test",
+    "prepare": "husky"
   },
-  "keywords": [],
-  "tsc-alias": { 
-    "resolveFullPaths": true, 
-    "verbose": true 
+  "keywords": [
+    "event-driven",
+    "messaging",
+    "nats",
+    "distributed",
+    "communication",
+    "framework",
+    "nodes",
+    "events",
+    "happen"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/happen.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/happen/issues"
+  },
+  "homepage": "https://github.com/yourusername/happen#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "msgpackr": "^1.10.1",
+    "nats": "^2.19.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.24",
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.0.11",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.3.3"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
-} 
+}
