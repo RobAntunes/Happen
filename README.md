@@ -7,11 +7,14 @@
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-blue.svg)](https://www.typescriptlang.org/)
 [![Coverage Status](https://img.shields.io/codecov/c/github/yourusername/happen.svg)](https://codecov.io/gh/yourusername/happen)
 
-## 🎯 What is Happen?
+## What is Happen?
 
 Happen is a revolutionary event-driven framework that reduces distributed system complexity to just two primitives: **Nodes** and **Events**. It provides a unified communication layer that works seamlessly across servers, browsers, and edge environments.
 
 ### Why Happen?
+
+The Problem: Systems can't talk to each other. APIs are brittle, protocols are complex, and integration is painful.
+The Solution: Universal event-driven communication that works across any language, any protocol, any environment.
 
 - **Radical Simplicity**: Just nodes and events - that's it
 - **Universal Communication**: Same code works everywhere - server, browser, edge
@@ -19,161 +22,115 @@ Happen is a revolutionary event-driven framework that reduces distributed system
 - **Production Ready**: Built-in resilience, monitoring, and debugging tools
 - **Blazing Fast**: Sub-millisecond local communication, efficient network transport
 
-## 🚀 Quick Start
+## Core Features
 
-Get up and running in under 5 minutes:
-
-```bash
-npm install @happen/core
-```
-
+### Event Continuum - Programmable Flow Control
 ```typescript
-import { happen } from '@happen/core';
-
-// Create a node
-const orderNode = happen.node('order-service');
-
-// Handle events with pattern matching
-orderNode.on('order.created', async (event) => {
-  console.log('New order:', event.payload);
+orderNode.on("process-order", function validateOrder(event, context) {
+  const validation = validateOrderData(event.payload);
   
-  // Process the order
-  const result = await processOrder(event.payload);
-  
-  // Continue the flow by returning a handler
-  return handlePayment;
-});
-
-// Send events
-orderNode.send(paymentNode, {
-  type: 'payment.process',
-  payload: { orderId: '123', amount: 99.99 }
-});
-
-// Start the node
-await orderNode.start();
-```
-
-## 🎨 Core Concepts
-
-### Nodes
-Self-contained units of computation that process events:
-
-```typescript
-const node = happen.node('my-service', {
-  // Optional configuration
-  state: { count: 0 },
-  accept: (origin) => origin.nodeId !== 'blocked-node'
-});
-```
-
-### Events
-Immutable messages that flow between nodes:
-
-```typescript
-{
-  id: 'evt-123',          // Auto-generated unique ID
-  type: 'user.created',   // Event type for pattern matching
-  payload: { ... },       // Your data
-  context: {              // Automatic context
-    causality: 'evt-122', // Tracks event chains
-    origin: { ... },      // Source information
-    timestamp: ...        // Automatic timestamp
+  if (!validation.valid) {
+    return { success: false, errors: validation.errors };
   }
+  
+  // Return next function to execute - pure functional flow
+  return processPayment;
+});
+
+function processPayment(event, context) {
+  // Process payment...
+  return createShipment; // Continue the flow
 }
 ```
 
-### Pattern Matching
-Flexible event routing with zero overhead:
-
+### Cross-Environment Magic
 ```typescript
-// String pattern
-node.on('order.created', handler);
+// This exact code works whether nodes are:
+// • Same process • Different machines • Browser ↔ Server • IoT devices
 
-// Function pattern
-node.on(type => type.startsWith('order.'), handler);
-
-// Multiple patterns
-node.on(type => ['payment.success', 'payment.failed'].includes(type), handler);
+serverNode.send(browserNode, { type: 'update-ui', payload: data });
+iotSensor.send(cloudService, { type: 'sensor-reading', payload: reading });
 ```
 
-### Event Continuum
-Functional flow control through handler chaining:
-
+### Intelligent State Management
 ```typescript
-node.on('order.created', (event) => {
-  if (!validateOrder(event.payload)) {
-    return handleInvalidOrder;  // Branch to error flow
-  }
-  
-  updateInventory(event.payload);
-  return processPayment;  // Continue to next step
-});
-```
-
-## 🌍 Cross-Environment Magic
-
-Write once, run anywhere:
-
-```typescript
-// Same code works in Node.js, Browser, Deno, Bun, etc.
-const node = happen.node('my-service');
-
-// Happen automatically handles:
-// - NATS TCP connection in Node.js
-// - WebSocket connection in browsers
-// - Optimal transport for your environment
-```
-
-## 📊 State Management
-
-Built-in functional state management:
-
-```typescript
-// Local state
-const state = node.state.get();
-const users = node.state.get(s => s.users);
-
-// State updates
-node.state.set(state => ({
+// Local state with functional transformations
+orderNode.state.set(state => ({
   ...state,
-  count: state.count + 1
+  orders: { ...state.orders, [id]: newOrder }
 }));
 
-// Cross-node state access (via Views)
+// Cross-node state access through views
 orderNode.state.set((state, views) => {
-  const customer = views.customer.get(s => s.customers[id]);
-  return { ...state, customerName: customer.name };
+  const customer = views.customer.get(s => s.customers[customerId]);
+  const inventory = views.inventory.get(s => s.products[productId]);
+  
+  return createOrderWithContext(state, customer, inventory);
 });
 ```
 
-## 🛡️ Production Ready
+### Temporal State - Time Travel for Data
+```typescript
+// Access historical state
+const orderState = orderNode.state.when('evt-123', (snapshot) => {
+  console.log('Order was:', snapshot.state.orders['order-456']);
+  return snapshot.state;
+});
+```
 
-### Built-in Resilience
-- Automatic reconnection
-- Message persistence during network issues
-- At-least-once delivery guarantees
-- Circuit breakers and timeouts
+## Real-World Examples
 
-### Observable by Design
-- Distributed tracing support
-- Metrics collection
-- Event flow visualization
-- Performance profiling
+### AI Agent Coordination
+```typescript
+const reasoningAgent = createNode('reasoning');
+const memoryAgent = createNode('memory');
+const actionAgent = createNode('actions');
 
-### Developer Experience
-- TypeScript-first with perfect type inference
-- Comprehensive error messages
-- Interactive debugging tools
-- Extensive documentation
+// Agents collaborate naturally
+reasoningAgent.on('analyze-situation', async (event) => {
+  const memory = await reasoningAgent.send(memoryAgent, {
+    type: 'recall-context',
+    payload: event.payload
+  }).return();
+  
+  const plan = createPlan(event.payload, memory);
+  
+  actionAgent.broadcast({
+    type: 'execute-plan', 
+    payload: plan
+  });
+});
+```
+
+### Legacy System Integration
+``` typescript
+// Wrap existing REST API
+const legacyAPI = createNode('legacy-billing');
+
+legacyAPI.on('process-payment', async (event) => {
+  // Call existing system
+  const result = await fetch('/legacy/billing', {
+    method: 'POST',
+    body: JSON.stringify(event.payload)
+  });
+  
+  return await result.json();
+});
+
+// Now legacy system is part of the event fabric
+modernService.send(legacyAPI, {
+  type: 'process-payment',
+  payload: paymentData
+});
+```
 
 ## 📚 Documentation
-
+- [Full Docs](https://insert-name-here.gitbook.io/happen-simply-productive/)
+### TODO:
 - [Getting Started Guide](docs/getting-started.md)
 - [API Reference](docs/api-reference.md)
 - [Architecture Overview](docs/architecture.md)
 - [Examples](examples/)
-- [Migration Guide](docs/migration.md)
 
 ## 🤝 Contributing
 
@@ -201,7 +158,7 @@ Happen is designed for high-performance event processing:
 |-----------|-------------|
 | Event Processing | 165,000+ events/sec |
 | State Updates | 1,250,000+ updates/sec |
-| Pattern Matching | 63,000+ events/sec (100 patterns) |
+| Pattern Matching | 164,000+ events/sec (100 patterns) |
 | Request-Response | 166,000+ req/sec |
 | Zero-Allocation | 183,000+ events/sec |
 
@@ -213,4 +170,4 @@ MIT © Happen Contributors
 
 ---
 
-Built with ❤️ by the Happen community. Make distributed systems simple again!
+Built with ❤️ for developers who believe in simplicity
