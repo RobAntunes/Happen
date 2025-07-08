@@ -12,6 +12,7 @@ import {
   HappenEvent,
   ID,
   SendResult,
+  HandlerContext,
 } from '../types';
 import { NodeStateContainer } from '../state';
 import { PatternEngine } from '../patterns';
@@ -52,11 +53,7 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
   private identity: NodeIdentity | null = null;
   private keyPair: KeyPair | null = null;
   private activeTimeouts = new Set<NodeJS.Timeout>();
-  private pendingResponses = new Map<string, {
-    reject: (error: Error) => void;
-    cleanup: () => void;
-    timeoutId: NodeJS.Timeout;
-  }>();
+  private expectingResponse = new Set<string>(); // Track events expecting responses
   
   constructor(
     name: string,
@@ -86,8 +83,26 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
         return;
       }
       
-      // Process through continuum
-      await processContinuum(handler, event, this.id);
+      // Create context for this handler
+      const context: HandlerContext = {};
+      
+      // Check if this event is expecting a response
+      const expectsResponse = (event as any).expectsResponse === true;
+      if (expectsResponse && (event as any).responseResolve) {
+        // Pass the resolve function directly to the handler
+        context.respond = (event as any).responseResolve;
+      }
+      
+      // Process through continuum (it will create its own context)
+      // But we need to pass our context through somehow...
+      // For now, let's use a modified handler that includes our context
+      const handlerWithContext: EventHandler = async (eventOrEvents, continuumContext) => {
+        // Merge our context (with respond) into the continuum context
+        Object.assign(continuumContext, context);
+        return handler(eventOrEvents, continuumContext);
+      };
+      
+      await processContinuum(handlerWithContext, event, this.id);
     });
   }
   
@@ -150,68 +165,38 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
     // Create a promise that will be resolved with the response
     let responseResolve: ((value: any) => void) | null = null;
     let responseReject: ((error: any) => void) | null = null;
-    const responsePromise = new Promise((resolve, reject) => {
+    
+    const responsePromise = new Promise<any>((resolve, reject) => {
       responseResolve = resolve;
       responseReject = reject;
     });
     
-    // Set up a one-time response handler BEFORE emitting
-    const responsePattern = `${fullEvent.id}.response`;
-    const cleanup = targetNode.on(responsePattern, (responseEventOrEvents) => {
-      const responseEvent = Array.isArray(responseEventOrEvents) ? responseEventOrEvents[0] : responseEventOrEvents;
-      cleanup(); // Unsubscribe after receiving response
-      this.pendingResponses.delete(fullEvent.id);
-      if (responseResolve && responseEvent) {
-        responseResolve(responseEvent.payload);
-      }
-      return undefined; // Complete the flow
+    // Attach a default catch handler to prevent unhandled rejection
+    responsePromise.catch(() => {
+      // Silently ignore - the error will be properly thrown when .return() is called
     });
     
     // Set a timeout for the response
     const timeoutId = setTimeout(() => {
-      cleanup();
       this.activeTimeouts.delete(timeoutId);
-      this.pendingResponses.delete(fullEvent.id);
+      this.expectingResponse.delete(fullEvent.id);
       if (responseReject) {
         responseReject(new Error('Response timeout'));
       }
     }, this.options.timeout);
     
-    // Track the timeout and pending response
+    // Track the timeout
     this.activeTimeouts.add(timeoutId);
-    this.pendingResponses.set(fullEvent.id, {
-      reject: responseReject!,
-      cleanup,
-      timeoutId
-    });
+    this.expectingResponse.add(fullEvent.id);
     
-    // Clear timeout if response comes back
-    responsePromise.finally(() => {
+    // Mark this event as expecting a response and attach the resolve function
+    (fullEvent as any).expectsResponse = true;
+    (fullEvent as any).responseResolve = (payload: any) => {
       clearTimeout(timeoutId);
       this.activeTimeouts.delete(timeoutId);
-      this.pendingResponses.delete(fullEvent.id);
-    });
-    
-    // Store a flag to track if return() has been called
-    let returnCalled = false;
-    
-    // Immediately attach a catch handler to prevent unhandled rejections
-    // We need to do this BEFORE the timeout can fire
-    responsePromise.catch((error) => {
-      // Use setImmediate to check after the current event loop
-      setImmediate(() => {
-        if (!returnCalled) {
-          // In test environment, we expect timeouts - don't crash
-          if (process.env.NODE_ENV === 'test' && error.message === 'Response timeout') {
-            return;
-          }
-          // In production, log the error
-          console.error('Unhandled response timeout:', error);
-        }
-      });
-      // Return undefined to prevent propagation
-      return undefined;
-    });
+      this.expectingResponse.delete(fullEvent.id);
+      responseResolve!(payload);
+    };
     
     // Now emit the event
     targetNode.emit(fullEvent);
@@ -219,20 +204,15 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
     // Return SendResult with return() method
     return {
       return: (callback?: (result: any) => void) => {
-        returnCalled = true;
         if (callback) {
           // Create a new promise that handles the callback
-          return new Promise((resolve, reject) => {
-            responsePromise.then((result) => {
-              callback(result);
-              resolve(result);
-            }).catch((error) => {
-              // Don't call callback on error, just reject
-              reject(error);
-            });
+          return responsePromise.then((result) => {
+            callback(result);
+            return result;
           });
         }
-        // Return the original promise, not the silentCatchPromise
+        
+        // Return the original promise
         return responsePromise;
       }
     };
@@ -252,8 +232,11 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
   /**
    * Emit an event locally
    */
-  emit(event: Partial<HappenEvent>): void {
-    const fullEvent = this.createOutgoingEvent(event);
+  emit(event: Partial<HappenEvent> | HappenEvent): void {
+    // If it's already a full event (has id), use it as-is
+    const fullEvent = (event as HappenEvent).id 
+      ? event as HappenEvent 
+      : this.createOutgoingEvent(event);
     
     if (!this.running) {
       this.eventQueue.push(fullEvent);
@@ -284,13 +267,6 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
   async stop(): Promise<void> {
     this.running = false;
     
-    // Clear all pending responses without rejecting them
-    // The promises already have catch handlers attached
-    this.pendingResponses.forEach(({ cleanup, timeoutId }) => {
-      clearTimeout(timeoutId);
-      cleanup();
-    });
-    this.pendingResponses.clear();
     
     // Clear all active timeouts
     this.activeTimeouts.forEach(timeoutId => {
@@ -352,8 +328,9 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
         matchers.map(matcher => 
           this.executeWithTimeout(
             async (event) => {
+              // Ensure handler is async
               await matcher.handler(event);
-            }, 
+            },
             event
           )
         )

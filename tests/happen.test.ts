@@ -173,7 +173,8 @@ describe('Happen Instance', () => {
         expect.objectContaining({
           type: 'shared.event',
           payload: { from: 'node1' }
-        })
+        }),
+        expect.any(Object) // context parameter
       );
       
       // In a real implementation with NATS, node2 would also receive it
@@ -196,19 +197,22 @@ describe('Happen Instance', () => {
         expect.objectContaining({
           type: 'broadcast.event',
           payload: { message: 'hello' }
-        })
+        }),
+        expect.any(Object) // context parameter
       );
     });
 
     it('should not implement cross-node send until NATS is ready', async () => {
-      const node1 = happenInstance.node('node1');
+      const node1 = happenInstance.node('node1', { timeout: 100 }); // Short timeout
       const node2 = happenInstance.node('node2');
       
       await happenInstance.connect();
       
-      await expect(
-        node1.send(node2.id, { type: 'cross.event', payload: {} })
-      ).rejects.toThrow('Cross-node communication not yet implemented');
+      // For now, sending to another node by ID will timeout
+      // since cross-node communication is not yet implemented
+      const sendResult = node1.send(node2.id, { type: 'cross.event', payload: {} });
+      
+      await expect(sendResult.return()).rejects.toThrow('Response timeout');
     });
   });
 

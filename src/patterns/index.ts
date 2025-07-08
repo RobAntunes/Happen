@@ -9,7 +9,7 @@ import { Pattern, PatternFunction, HappenEvent } from '../types';
  */
 export interface PatternMatcher {
   pattern: Pattern;
-  handler: (event: HappenEvent) => void;
+  handler: (event: HappenEvent) => void | Promise<void>;
   priority: number;
 }
 
@@ -106,7 +106,7 @@ export class PatternEngine {
   /**
    * Add a pattern matcher
    */
-  add(pattern: Pattern, handler: (event: HappenEvent) => void, priority = 0): () => void {
+  add(pattern: Pattern, handler: (event: HappenEvent) => void | Promise<void>, priority = 0): () => void {
     const matcher: PatternMatcher = { pattern, handler, priority };
     this.matchers.push(matcher);
     this.clearCache();
