@@ -21,17 +21,18 @@ describe('Events', () => {
       expect(event.type).toBe('test.event');
       expect(event.payload).toEqual({ data: 'test' });
       expect(event.context.timestamp).toBeGreaterThan(0);
-      expect(event.context.origin.nodeId).toBe('unknown');
+      expect(event.context.causal.sender).toBe('unknown');
     });
 
     it('should accept custom context', () => {
       const event = createEvent('test.event', { data: 'test' }, {
-        origin: { nodeId: 'custom-node' },
-        correlationId: 'corr-123'
-      });
+        causal: { 
+          correlationId: 'corr-123'
+        }
+      }, 'custom-node');
       
-      expect(event.context.origin.nodeId).toBe('custom-node');
-      expect(event.context.correlationId).toBe('corr-123');
+      expect(event.context.causal.sender).toBe('custom-node');
+      expect(event.context.causal.correlationId).toBe('corr-123');
     });
 
     it('should generate unique IDs for different events', () => {
@@ -55,28 +56,34 @@ describe('Events', () => {
       const parentEvent = createEvent('parent.event', { id: 1 });
       const childEvent = createCausalEvent(parentEvent, 'child.event', { id: 2 });
       
-      expect(childEvent.context.causality).toBe(parentEvent.id);
+      expect(childEvent.context.causal.causationId).toBe(parentEvent.id);
       expect(childEvent.id).not.toBe(parentEvent.id);
     });
 
     it('should preserve correlation ID from parent', () => {
       const parentEvent = createEvent('parent.event', {}, {
-        correlationId: 'corr-456'
+        causal: {
+          correlationId: 'corr-456'
+        }
       });
       const childEvent = createCausalEvent(parentEvent, 'child.event', {});
       
-      expect(childEvent.context.correlationId).toBe('corr-456');
+      expect(childEvent.context.causal.correlationId).toBe('corr-456');
     });
 
     it('should allow overriding correlation ID', () => {
       const parentEvent = createEvent('parent.event', {}, {
-        correlationId: 'corr-456'
+        causal: {
+          correlationId: 'corr-456'
+        }
       });
       const childEvent = createCausalEvent(parentEvent, 'child.event', {}, {
-        correlationId: 'new-corr-789'
+        causal: {
+          correlationId: 'new-corr-789'
+        }
       });
       
-      expect(childEvent.context.correlationId).toBe('new-corr-789');
+      expect(childEvent.context.causal.correlationId).toBe('new-corr-789');
     });
   });
 
@@ -128,7 +135,7 @@ describe('Events', () => {
       
       const errorEvent = createErrorEvent(error, sourceEvent);
       
-      expect(errorEvent.context.causality).toBe(sourceEvent.id);
+      expect(errorEvent.context.causal.causationId).toBe(sourceEvent.id);
     });
 
     it('should handle errors with custom properties', () => {
@@ -169,16 +176,16 @@ describe('Events', () => {
           type: 'test', 
           payload: {}, 
           context: { timestamp: Date.now() } 
-        }, // missing origin
+        }, // missing causal
         { 
           id: 'test', 
           type: 'test', 
           payload: {}, 
           context: { 
             timestamp: Date.now(),
-            origin: {} 
+            causal: {} 
           } 
-        }, // missing nodeId in origin
+        }, // missing required fields in causal
       ];
 
       invalidEvents.forEach(event => {
@@ -193,7 +200,11 @@ describe('Events', () => {
         payload: {},
         context: {
           timestamp: Date.now(),
-          origin: { nodeId: 'test-node' }
+          causal: {
+            id: 'test-id',
+            sender: 'test-node',
+            path: ['test-node']
+          }
         }
       };
 
@@ -228,13 +239,14 @@ describe('Events', () => {
 
     it('should preserve original context when not overridden', () => {
       const originalEvent = createEvent('test.event', {}, {
-        correlationId: 'corr-123',
-        origin: { nodeId: 'test-node' }
-      });
+        causal: {
+          correlationId: 'corr-123'
+        }
+      }, 'test-node');
       const clonedEvent = cloneEvent(originalEvent);
       
-      expect(clonedEvent.context.correlationId).toBe('corr-123');
-      expect(clonedEvent.context.origin.nodeId).toBe('test-node');
+      expect(clonedEvent.context.causal.correlationId).toBe('corr-123');
+      expect(clonedEvent.context.causal.sender).toBe('test-node');
     });
   });
 });

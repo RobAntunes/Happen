@@ -214,7 +214,7 @@ export class EventRouter {
     // System events go to system subjects
     if (event.type.startsWith('system.')) {
       if (event.type === 'system.node.status') {
-        return SubjectBuilder.nodeStatus(event.context.origin.nodeId);
+        return SubjectBuilder.nodeStatus(event.context.causal.sender);
       }
       return `${SUBJECT_PATTERNS.SYSTEM}.${event.type.substring(7)}`;
     }

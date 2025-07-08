@@ -21,7 +21,24 @@ export function createMatcher(pattern: Pattern): PatternFunction {
     return pattern;
   }
   
-  // String pattern - exact match
+  // String pattern
+  if (pattern.includes('*')) {
+    // Wildcard pattern (e.g., 'order.*')
+    const regex = new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+    return (type: string) => regex.test(type);
+  }
+  
+  if (pattern.includes('{') && pattern.includes('}')) {
+    // Alternative pattern (e.g., '{order,payment}.created')
+    const match = pattern.match(/^\{([^}]+)\}(.*)$/);
+    if (match && match[1]) {
+      const alternatives = match[1].split(',');
+      const suffix = match[2] || '';
+      return (type: string) => alternatives.some(alt => type === alt + suffix);
+    }
+  }
+  
+  // Exact match
   return (type: string) => type === pattern;
 }
 

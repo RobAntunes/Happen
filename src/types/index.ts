@@ -12,24 +12,44 @@ export type ID = string;
  */
 export type EventPayload = unknown;
 
+
 /**
- * Origin context tracks where an event came from
+ * Causal context for event relationships
  */
-export interface OriginContext {
-  nodeId: ID;
-  sourceId?: string;
-  sourceType?: string;
+export interface CausalContext {
+  id: ID;
+  sender: string;
+  causationId?: string;
+  correlationId?: string;
+  path: string[];
+}
+
+/**
+ * System context for environment info
+ */
+export interface SystemContext {
+  environment?: string;
+  region?: string;
+  [key: string]: any;
+}
+
+/**
+ * User context for permissions and identity
+ */
+export interface UserContext {
+  id?: string;
+  permissions?: string[];
+  [key: string]: any;
 }
 
 /**
  * Event context provides metadata about an event
  */
 export interface EventContext {
-  causality?: ID;
-  origin: OriginContext;
+  causal: CausalContext;
+  system?: SystemContext;
+  user?: UserContext;
   timestamp: number;
-  correlationId?: string;
-  version?: number;
 }
 
 /**
@@ -43,7 +63,7 @@ export interface HappenEvent<T = EventPayload> {
 }
 
 /**
- * Pattern matching function
+ * Pattern matching function - can match on just type or full event
  */
 export type PatternFunction = (type: string, event?: HappenEvent) => boolean;
 
@@ -53,18 +73,27 @@ export type PatternFunction = (type: string, event?: HappenEvent) => boolean;
 export type Pattern = string | PatternFunction;
 
 /**
+ * Shared handler context that flows through event handlers
+ */
+export interface HandlerContext {
+  [key: string]: any;
+}
+
+/**
  * Event handler return types for flow control
  */
 export type EventHandlerResult<T = EventPayload> = 
   | void 
   | EventHandler<T>
-  | Promise<void | EventHandler<T>>;
+  | any // Any non-function value completes the flow
+  | Promise<void | EventHandler<T> | any>;
 
 /**
- * Event handler function
+ * Event handler function - receives event(s) and mutable context
  */
 export type EventHandler<T = EventPayload> = (
-  event: HappenEvent<T>
+  eventOrEvents: HappenEvent<T> | HappenEvent<T>[],
+  context: HandlerContext
 ) => EventHandlerResult<T>;
 
 /**
@@ -102,9 +131,18 @@ export interface GlobalState {
  */
 export interface NodeOptions<T = any> {
   state?: T;
-  accept?: (origin: OriginContext) => boolean;
+  acceptFrom?: string[]; // Array of node IDs/patterns to accept events from
+  accept?: (origin: { nodeId: string }) => boolean; // Custom accept function (optional)
   concurrency?: number;
   timeout?: number;
+}
+
+/**
+ * Result of send operation with return capability
+ */
+export interface SendResult {
+  return(): Promise<any>;
+  return(callback: (result: any) => void): void;
 }
 
 /**
@@ -116,7 +154,8 @@ export interface HappenNode<T = any> {
   readonly global: GlobalState;
   
   on(pattern: Pattern, handler: EventHandler): () => void;
-  send(target: HappenNode | ID, event: Partial<HappenEvent>): Promise<void>;
+  send(target: HappenNode | ID, event: Partial<HappenEvent>): SendResult;
+  send(target: HappenNode | ID, events: Partial<HappenEvent>[]): SendResult;
   broadcast(event: Partial<HappenEvent>): Promise<void>;
   emit(event: Partial<HappenEvent>): void;
   

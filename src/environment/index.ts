@@ -18,12 +18,12 @@ export interface EnvironmentCapabilities {
  */
 export function detectEnvironment(): RuntimeEnvironment {
   // Deno detection
-  if (typeof Deno !== 'undefined' && Deno.version) {
+  if (typeof (globalThis as any).Deno !== 'undefined' && (globalThis as any).Deno?.version) {
     return 'deno';
   }
   
   // Bun detection
-  if (typeof Bun !== 'undefined' && Bun.version) {
+  if (typeof (globalThis as any).Bun !== 'undefined' && (globalThis as any).Bun?.version) {
     return 'bun';
   }
   
@@ -33,11 +33,11 @@ export function detectEnvironment(): RuntimeEnvironment {
   }
   
   // Browser/WebWorker detection
-  if (typeof window !== 'undefined') {
+  if (typeof (globalThis as any).window !== 'undefined') {
     return 'browser';
   }
   
-  if (typeof self !== 'undefined' && typeof importScripts === 'function') {
+  if (typeof (globalThis as any).self !== 'undefined' && typeof (globalThis as any).importScripts === 'function') {
     return 'webworker';
   }
   
@@ -200,15 +200,15 @@ export function getEnvironmentInfo(): EnvironmentInfo {
       break;
       
     case 'browser':
-      info.userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : undefined;
+      info.userAgent = typeof (globalThis as any).navigator !== 'undefined' ? (globalThis as any).navigator.userAgent : undefined;
       break;
       
     case 'deno':
-      info.version = typeof Deno !== 'undefined' ? Deno.version.deno : undefined;
+      info.version = typeof (globalThis as any).Deno !== 'undefined' ? (globalThis as any).Deno.version.deno : undefined;
       break;
       
     case 'bun':
-      info.version = typeof Bun !== 'undefined' ? Bun.version : undefined;
+      info.version = typeof (globalThis as any).Bun !== 'undefined' ? (globalThis as any).Bun.version : undefined;
       break;
   }
   

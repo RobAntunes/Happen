@@ -2,7 +2,7 @@
  * Event Continuum - Functional flow control for event processing
  */
 
-import { EventHandler, HappenEvent } from '../types';
+import { EventHandler, HappenEvent, HandlerContext } from '../types';
 
 /**
  * Flow context that gets passed through the continuum
@@ -20,12 +20,12 @@ export interface FlowContext {
  */
 export async function executeHandler(
   handler: EventHandler,
-  event: HappenEvent,
-  _context: FlowContext
-): Promise<EventHandler | void> {
+  eventOrEvents: HappenEvent | HappenEvent[],
+  context: HandlerContext
+): Promise<any> {
   try {
-    const result = await handler(event);
-    return result as EventHandler | void;
+    const result = await handler(eventOrEvents, context);
+    return result;
   } catch (error) {
     // Errors are handled by returning error handlers
     throw error;
@@ -33,36 +33,51 @@ export async function executeHandler(
 }
 
 /**
- * Process an event through the continuum
+ * Process event(s) through the continuum
  */
 export async function processContinuum(
   initialHandler: EventHandler,
-  event: HappenEvent,
+  eventOrEvents: HappenEvent | HappenEvent[],
   nodeId: string
-): Promise<void> {
-  const context: FlowContext = {
-    event,
+): Promise<any> {
+  // Create the shared handler context
+  const context: HandlerContext = {};
+  
+  // Track flow for debugging
+  const flowContext: FlowContext = {
+    event: Array.isArray(eventOrEvents) ? eventOrEvents[0]! : eventOrEvents,
     nodeId,
     startTime: Date.now(),
     path: [],
   };
   
-  let currentHandler: EventHandler | void = initialHandler;
+  let current: any = initialHandler;
+  let result: any = undefined;
   
-  while (currentHandler) {
-    context.path.push(currentHandler.name || 'anonymous');
+  while (typeof current === 'function') {
+    flowContext.path.push(current.name || 'anonymous');
     
     try {
-      currentHandler = await executeHandler(currentHandler, event, context);
+      result = await executeHandler(current, eventOrEvents, context);
+      
+      // If result is a function, continue the flow
+      if (typeof result === 'function') {
+        current = result;
+      } else {
+        // Any other value completes the flow
+        return result;
+      }
     } catch (error) {
       // Allow error handlers to be thrown and caught
       if (typeof error === 'function') {
-        currentHandler = error as EventHandler;
+        current = error as EventHandler;
       } else {
         throw error;
       }
     }
   }
+  
+  return result;
 }
 
 /**
@@ -72,9 +87,9 @@ export const flow = {
   /**
    * Continue to next handler only if condition is met
    */
-  when: (condition: boolean | ((event: HappenEvent) => boolean), handler: EventHandler): EventHandler => {
-    return (event) => {
-      const shouldContinue = typeof condition === 'function' ? condition(event) : condition;
+  when: (condition: boolean | ((eventOrEvents: HappenEvent | HappenEvent[], context: HandlerContext) => boolean), handler: EventHandler): EventHandler => {
+    return (eventOrEvents, context) => {
+      const shouldContinue = typeof condition === 'function' ? condition(eventOrEvents, context) : condition;
       return shouldContinue ? handler : undefined;
     };
   },
@@ -82,10 +97,10 @@ export const flow = {
   /**
    * Branch to different handlers based on conditions
    */
-  branch: (branches: Array<[condition: (event: HappenEvent) => boolean, handler: EventHandler]>): EventHandler => {
-    return (event) => {
+  branch: (branches: Array<[condition: (eventOrEvents: HappenEvent | HappenEvent[], context: HandlerContext) => boolean, handler: EventHandler]>): EventHandler => {
+    return (eventOrEvents, context) => {
       for (const [condition, handler] of branches) {
-        if (condition(event)) {
+        if (condition(eventOrEvents, context)) {
           return handler;
         }
       }
@@ -97,8 +112,8 @@ export const flow = {
    * Execute multiple handlers in parallel
    */
   parallel: (...handlers: EventHandler[]): EventHandler => {
-    return async (event) => {
-      await Promise.all(handlers.map(handler => handler(event)));
+    return async (eventOrEvents, context) => {
+      await Promise.all(handlers.map(handler => handler(eventOrEvents, context)));
       return undefined;
     };
   },
@@ -107,9 +122,9 @@ export const flow = {
    * Execute handlers in sequence
    */
   sequence: (...handlers: EventHandler[]): EventHandler => {
-    return async (event) => {
+    return async (eventOrEvents, context) => {
       for (const handler of handlers) {
-        const next = await handler(event);
+        const next = await handler(eventOrEvents, context);
         if (next) {
           return next;
         }
@@ -124,12 +139,12 @@ export const flow = {
   retry: (handler: EventHandler, options?: { maxAttempts?: number; delay?: number }): EventHandler => {
     const { maxAttempts = 3, delay = 1000 } = options || {};
     
-    return async (event) => {
+    return async (eventOrEvents, context) => {
       let lastError: any;
       
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-          return await handler(event);
+          return await handler(eventOrEvents, context);
         } catch (error) {
           lastError = error;
           if (attempt < maxAttempts - 1) {
@@ -146,37 +161,39 @@ export const flow = {
    * Add timeout to a handler
    */
   timeout: (handler: EventHandler, ms: number): EventHandler => {
-    return async (event) => {
+    return async (eventOrEvents, context) => {
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error(`Handler timeout after ${ms}ms`)), ms);
       });
       
-      return Promise.race([handler(event), timeoutPromise]);
+      return Promise.race([handler(eventOrEvents, context), timeoutPromise]);
     };
   },
   
   /**
    * Transform event before passing to handler
    */
-  map: (transform: (event: HappenEvent) => HappenEvent, handler: EventHandler): EventHandler => {
-    return (event) => handler(transform(event));
+  map: (transform: (eventOrEvents: HappenEvent | HappenEvent[], context: HandlerContext) => HappenEvent | HappenEvent[], handler: EventHandler): EventHandler => {
+    return (eventOrEvents, context) => handler(transform(eventOrEvents, context), context);
   },
   
   /**
    * Filter events before processing
    */
-  filter: (predicate: (event: HappenEvent) => boolean, handler: EventHandler): EventHandler => {
-    return (event) => predicate(event) ? handler(event) : undefined;
+  filter: (predicate: (eventOrEvents: HappenEvent | HappenEvent[], context: HandlerContext) => boolean, handler: EventHandler): EventHandler => {
+    return (eventOrEvents, context) => predicate(eventOrEvents, context) ? handler(eventOrEvents, context) : undefined;
   },
   
   /**
    * Catch errors and handle them
    */
   catch: (handler: EventHandler, errorHandler: EventHandler): EventHandler => {
-    return async (event) => {
+    return async (eventOrEvents, context) => {
       try {
-        return await handler(event);
+        return await handler(eventOrEvents, context);
       } catch (error) {
+        // Store error in context for error handler
+        context.error = error;
         return errorHandler;
       }
     };
@@ -186,13 +203,13 @@ export const flow = {
    * Always execute a handler regardless of previous results
    */
   finally: (handler: EventHandler, finallyHandler: EventHandler): EventHandler => {
-    return async (event) => {
+    return async (eventOrEvents, context) => {
       try {
-        const result = await handler(event);
-        await finallyHandler(event);
+        const result = await handler(eventOrEvents, context);
+        await finallyHandler(eventOrEvents, context);
         return result;
       } catch (error) {
-        await finallyHandler(event);
+        await finallyHandler(eventOrEvents, context);
         throw error;
       }
     };

@@ -11,16 +11,25 @@ import { generateId } from '../utils/id';
 export function createEvent<T = EventPayload>(
   type: string,
   payload: T,
-  context?: Partial<EventContext>
+  context?: Partial<EventContext>,
+  nodeId: string = 'unknown'
 ): HappenEvent<T> {
+  const eventId = generateId();
+  
   return {
-    id: generateId(),
+    id: eventId,
     type,
     payload,
     context: {
       timestamp: Date.now(),
-      origin: context?.origin || { nodeId: 'unknown' },
-      ...context,
+      causal: {
+        ...context?.causal,
+        id: context?.causal?.id || eventId,
+        sender: context?.causal?.sender || nodeId,
+        path: context?.causal?.path || [nodeId],
+      },
+      system: context?.system,
+      user: context?.user,
     },
   };
 }
@@ -32,13 +41,23 @@ export function createCausalEvent<T = EventPayload>(
   parentEvent: HappenEvent,
   type: string,
   payload: T,
-  context?: Partial<EventContext>
+  context?: Partial<EventContext>,
+  nodeId: string = 'unknown'
 ): HappenEvent<T> {
+  const parentCausal = parentEvent.context.causal;
+  const correlationId = parentCausal.correlationId || parentCausal.id;
+    
   return createEvent(type, payload, {
     ...context,
-    causality: parentEvent.id,
-    correlationId: context?.correlationId || parentEvent.context.correlationId,
-  });
+    causal: {
+      id: generateId(), // New event needs its own ID
+      sender: nodeId,
+      causationId: parentEvent.id,
+      correlationId,
+      path: [...parentCausal.path, nodeId],
+      ...context?.causal
+    }
+  }, nodeId);
 }
 
 /**
@@ -57,8 +76,23 @@ export function matchesPattern(event: HappenEvent, pattern: string | ((type: str
 export function createErrorEvent(
   error: Error,
   sourceEvent?: HappenEvent,
-  context?: Partial<EventContext>
+  context?: Partial<EventContext>,
+  nodeId: string = 'unknown'
 ): HappenEvent<{ error: string; stack?: string; code?: string }> {
+  if (sourceEvent) {
+    return createCausalEvent(
+      sourceEvent,
+      'system.error',
+      {
+        error: error.message,
+        stack: error.stack,
+        code: (error as any).code,
+      },
+      context,
+      nodeId
+    );
+  }
+  
   return createEvent(
     'system.error',
     {
@@ -66,10 +100,8 @@ export function createErrorEvent(
       stack: error.stack,
       code: (error as any).code,
     },
-    {
-      ...context,
-      causality: sourceEvent?.id,
-    }
+    context,
+    nodeId
   );
 }
 
@@ -88,8 +120,10 @@ export function validateEvent(event: unknown): event is HappenEvent {
     e.payload !== undefined &&
     typeof e.context === 'object' &&
     typeof e.context.timestamp === 'number' &&
-    typeof e.context.origin === 'object' &&
-    typeof e.context.origin.nodeId === 'string'
+    typeof e.context.causal === 'object' &&
+    typeof e.context.causal.id === 'string' &&
+    typeof e.context.causal.sender === 'string' &&
+    Array.isArray(e.context.causal.path)
   );
 }
 

@@ -78,7 +78,8 @@ describe('HappenNode', () => {
         expect.objectContaining({
           type: 'test.event',
           payload: { data: 'test' }
-        })
+        }),
+        expect.any(Object) // Handler context
       );
     });
 
@@ -140,14 +141,10 @@ describe('HappenNode', () => {
       await nodeWithAcceptance.start();
       
       // Create event from blocked node
-      const blockedEvent = createEvent('test.event', {}, {
-        origin: { nodeId: 'blocked-node' }
-      });
+      const blockedEvent = createEvent('test.event', {}, {}, 'blocked-node');
       
       // Create event from allowed node
-      const allowedEvent = createEvent('test.event', {}, {
-        origin: { nodeId: 'allowed-node' }
-      });
+      const allowedEvent = createEvent('test.event', {}, {}, 'allowed-node');
       
       // Directly process events to test acceptance control
       await (nodeWithAcceptance as any).processEvent(blockedEvent);
@@ -161,11 +158,12 @@ describe('HappenNode', () => {
           type: 'test.event',
           payload: {},
           context: expect.objectContaining({
-            origin: expect.objectContaining({
-              nodeId: 'allowed-node' // Original event origin should be preserved
+            causal: expect.objectContaining({
+              sender: 'allowed-node' // Original event sender should be preserved
             })
           })
-        })
+        }),
+        expect.any(Object) // Handler context
       );
       
       await nodeWithAcceptance.stop();
@@ -205,11 +203,12 @@ describe('HappenNode', () => {
       expect(handler).toHaveBeenCalledWith(
         expect.objectContaining({
           context: expect.objectContaining({
-            origin: expect.objectContaining({
-              nodeId: node.id
+            causal: expect.objectContaining({
+              sender: node.id
             })
           })
-        })
+        }),
+        expect.any(Object) // Handler context
       );
     });
 
@@ -222,8 +221,13 @@ describe('HappenNode', () => {
         type: 'test.event',
         payload: {},
         context: {
-          correlationId: 'custom-correlation',
-          origin: { nodeId: 'custom-node', sourceId: 'user-123' },
+          causal: {
+            id: 'test-id',
+            sender: 'custom-node',
+            correlationId: 'custom-correlation',
+            path: ['custom-node']
+          },
+          user: { id: 'user-123' },
           timestamp: Date.now()
         }
       });
@@ -233,13 +237,16 @@ describe('HappenNode', () => {
       expect(handler).toHaveBeenCalledWith(
         expect.objectContaining({
           context: expect.objectContaining({
-            correlationId: 'custom-correlation',
-            origin: expect.objectContaining({
-              nodeId: node.id, // emit() always sets the emitting node as origin
-              sourceId: 'user-123' // Other origin properties preserved
+            causal: expect.objectContaining({
+              sender: node.id, // emit() always sets the emitting node as sender
+              correlationId: 'custom-correlation'
+            }),
+            user: expect.objectContaining({
+              id: 'user-123' // User context preserved
             })
           })
-        })
+        }),
+        expect.any(Object) // Handler context
       );
     });
   });
@@ -300,7 +307,8 @@ describe('HappenNode', () => {
           payload: expect.objectContaining({
             error: 'Handler error'
           })
-        })
+        }),
+        expect.any(Object) // Handler context
       );
     });
 
@@ -350,7 +358,8 @@ describe('HappenNode', () => {
           payload: expect.objectContaining({
             error: expect.stringContaining('timeout')
           })
-        })
+        }),
+        expect.any(Object) // Handler context
       );
       
       await timeoutNode.stop();

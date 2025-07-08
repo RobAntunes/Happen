@@ -2,7 +2,6 @@
  * Node.js TCP NATS transport adapter
  */
 
-import { TransportAdapter } from '../types';
 import { BaseTransportAdapter, ConnectionOptions } from './index';
 
 /**

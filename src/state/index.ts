@@ -3,6 +3,7 @@
  */
 
 import { NodeState, ViewCollection, ID } from '../types';
+import { EnhancedViewCollection, getGlobalViewRegistry } from '../views';
 
 /**
  * Create a node state container
@@ -11,9 +12,11 @@ export class NodeStateContainer<T> implements NodeState<T> {
   private state: T;
   private listeners: Set<(state: T) => void> = new Set();
   private eventWatchers = new Map<ID, Set<(state: T) => void>>();
+  private views: EnhancedViewCollection;
   
-  constructor(initialState: T) {
+  constructor(initialState: T, _nodeId?: ID) {
     this.state = initialState;
+    this.views = this.createViewCollection();
   }
   
   /**
@@ -32,7 +35,7 @@ export class NodeStateContainer<T> implements NodeState<T> {
    * Update the state
    */
   set(updater: (state: T, views?: ViewCollection) => T): void {
-    const newState = updater(this.state);
+    const newState = updater(this.state, this.createLegacyViewCollection());
     if (newState !== this.state) {
       this.state = newState;
       this.notifyListeners();
@@ -78,6 +81,54 @@ export class NodeStateContainer<T> implements NodeState<T> {
   
   private notifyListeners(): void {
     this.listeners.forEach(listener => listener(this.state));
+  }
+
+  /**
+   * Get the enhanced view collection for cross-node state access
+   */
+  getViews(): EnhancedViewCollection {
+    return this.views;
+  }
+
+  /**
+   * Create the enhanced view collection
+   */
+  private createViewCollection(): EnhancedViewCollection {
+    const registry = getGlobalViewRegistry();
+    return {
+      collect: registry.collect.bind(registry),
+      get: registry.getState.bind(registry),
+      cache: registry.cache.bind(registry),
+      getCached: registry.getCached.bind(registry),
+      clearCache: registry.clearCache.bind(registry),
+      subscribe: registry.subscribe.bind(registry),
+    };
+  }
+
+  /**
+   * Create legacy view collection for backward compatibility
+   */
+  private createLegacyViewCollection(): ViewCollection {
+    const registry = getGlobalViewRegistry();
+    const legacyViews: ViewCollection = {};
+    
+    // Create proxy objects for each registered node
+    for (const nodeId of registry.getRegisteredNodes()) {
+      legacyViews[nodeId] = {
+        get: <T, R>(selector: (state: T) => R): R => {
+          try {
+            // This is a synchronous version for backward compatibility
+            // In a real implementation, this would need to be enhanced
+            // to handle async access properly
+            return registry.getState(nodeId, selector) as R;
+          } catch {
+            return undefined as R;
+          }
+        }
+      };
+    }
+    
+    return legacyViews;
   }
 }
 

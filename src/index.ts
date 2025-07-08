@@ -11,13 +11,15 @@ export * from './events';
 export * from './patterns';
 export * from './state';
 export * from './continuum';
+export { getGlobalViewRegistry, createViewCollection } from './views';
+export * from './identity';
 
-// Main API
-export { createHappen } from './happen';
-import { createHappen } from './happen';
+// Main API following the spec
+export { initializeHappen, createHappen } from './initialize';
+export type { HappenInitConfig, HappenInstance } from './initialize';
 
-// Default instance
-export const happen = createHappen();
+// Legacy API for backward compatibility
+export { createHappen as createHappenLegacy } from './happen';
 
 // Convenience exports
 export { flow } from './continuum';
