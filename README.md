@@ -1,26 +1,28 @@
-# 🌊 Happen - Simply Productive
+# ⚡️ Happen
 
 > Universal event-driven communication framework that makes complex distributed systems suddenly manageable.
 
 [![npm version](https://img.shields.io/npm/v/@happen/core.svg)](https://www.npmjs.com/package/@happen/core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-blue.svg)](https://www.typescriptlang.org/)
-[![Coverage Status](https://img.shields.io/codecov/c/github/yourusername/happen.svg)](https://codecov.io/gh/yourusername/happen)
+[![Coverage Status](https://img.shields.io/codecov/c/github/yourusername/happen.svg)](https://codecov.io/gh/RobAntunes/Happen)
 
 ## What is Happen?
 
-Happen is a revolutionary event-driven framework that reduces distributed system complexity to just two primitives: **Nodes** and **Events**. It provides a unified communication layer that works seamlessly across servers, browsers, and edge environments.
+Happen is an event-driven framework that reduces distributed system complexity to just two primitives: **Nodes** and **Events**. It provides a unified communication layer that works seamlessly across servers, browsers, and edge environments.
 
 ### Why Happen?
 
 The Problem: Systems can't talk to each other. APIs are brittle, protocols are complex, and integration is painful.
 The Solution: Universal event-driven communication that works across any language, any protocol, any environment.
 
-- **Radical Simplicity**: Just nodes and events - that's it
+
+- **Simplicity**: Just nodes and events - that's it
 - **Universal Communication**: Same code works everywhere - server, browser, edge
 - **Zero Configuration**: Automatic discovery and routing via NATS
 - **Production Ready**: Built-in resilience, monitoring, and debugging tools
 - **Blazing Fast**: Sub-millisecond local communication, efficient network transport
+
 
 ## Core Features
 
