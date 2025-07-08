@@ -9,17 +9,17 @@
 
 ## 🎯 What is Happen?
 
-Happen is a revolutionary event-driven framework that reduces distributed system complexity to just two primitives: **Nodes** and **Events**. It provides a unified communication layer that works seamlessly across servers, browsers, and edge environments.
+Happen is an event-driven framework that reduces distributed system complexity to just two primitives: **Nodes** and **Events**. It provides a unified communication layer that works seamlessly across servers, browsers, and edge environments.
 
 ### Why Happen?
 
-- **Radical Simplicity**: Just nodes and events - that's it
+- **Simplicity**: Just nodes and events - that's it
 - **Universal Communication**: Same code works everywhere - server, browser, edge
 - **Zero Configuration**: Automatic discovery and routing via NATS
 - **Production Ready**: Built-in resilience, monitoring, and debugging tools
 - **Blazing Fast**: Sub-millisecond local communication, efficient network transport
 
-## 🚀 Quick Start
+## 🚀 Quick Start - NOT READY (CLONE INSTEAD)
 
 Get up and running in under 5 minutes:
 
@@ -168,12 +168,12 @@ orderNode.state.set((state, views) => {
 - Extensive documentation
 
 ## 📚 Documentation
-
+- [Full Docs](https://insert-name-here.gitbook.io/happen-simply-productive/)
+### COMING SOON
 - [Getting Started Guide](docs/getting-started.md)
 - [API Reference](docs/api-reference.md)
 - [Architecture Overview](docs/architecture.md)
 - [Examples](examples/)
-- [Migration Guide](docs/migration.md)
 
 ## 🤝 Contributing
 
@@ -201,7 +201,7 @@ Happen is designed for high-performance event processing:
 |-----------|-------------|
 | Event Processing | 165,000+ events/sec |
 | State Updates | 1,250,000+ updates/sec |
-| Pattern Matching | 63,000+ events/sec (100 patterns) |
+| Pattern Matching | 219,000+ events/sec (100 patterns) |
 | Request-Response | 166,000+ req/sec |
 | Zero-Allocation | 183,000+ events/sec |
 
