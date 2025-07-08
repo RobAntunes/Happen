@@ -1,4 +1,4 @@
-# ⚡️ Happen - Simply Productive
+# ⚡️ Happen
 
 > Universal event-driven communication framework that makes complex distributed systems suddenly manageable.
 
