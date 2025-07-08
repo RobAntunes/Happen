@@ -12,7 +12,6 @@ import {
   HappenEvent,
   ID,
   SendResult,
-  HandlerContext,
 } from '../types';
 import { NodeStateContainer } from '../state';
 import { PatternEngine } from '../patterns';
@@ -83,26 +82,17 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
         return;
       }
       
-      // Create context for this handler
-      const context: HandlerContext = {};
-      
       // Check if this event is expecting a response
       const expectsResponse = (event as any).expectsResponse === true;
-      if (expectsResponse && (event as any).responseResolve) {
-        // Pass the resolve function directly to the handler
-        context.respond = (event as any).responseResolve;
+      const responseResolve = (event as any).responseResolve;
+      
+      // Process through continuum and capture the return value
+      const result = await processContinuum(handler, event, this.id);
+      
+      // If we got a result and this event expects a response, resolve it
+      if (expectsResponse && responseResolve && result !== undefined) {
+        responseResolve(result);
       }
-      
-      // Process through continuum (it will create its own context)
-      // But we need to pass our context through somehow...
-      // For now, let's use a modified handler that includes our context
-      const handlerWithContext: EventHandler = async (eventOrEvents, continuumContext) => {
-        // Merge our context (with respond) into the continuum context
-        Object.assign(continuumContext, context);
-        return handler(eventOrEvents, continuumContext);
-      };
-      
-      await processContinuum(handlerWithContext, event, this.id);
     });
   }
   
