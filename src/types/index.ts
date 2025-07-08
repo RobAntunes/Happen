@@ -154,8 +154,8 @@ export interface HappenNode<T = any> {
   readonly global: GlobalState;
   
   on(pattern: Pattern, handler: EventHandler): () => void;
-  send(target: HappenNode | ID, event: Partial<HappenEvent>): SendResult;
-  send(target: HappenNode | ID, events: Partial<HappenEvent>[]): SendResult;
+  send(target: HappenNode | HappenNode[] | ID, event: Partial<HappenEvent>): SendResult;
+  send(target: HappenNode | HappenNode[] | ID, events: Partial<HappenEvent>[]): SendResult;
   broadcast(event: Partial<HappenEvent>): Promise<void>;
   emit(event: Partial<HappenEvent>): void;
   

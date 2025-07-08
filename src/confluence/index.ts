@@ -18,9 +18,10 @@ declare global {
     on(this: HappenNode[], pattern: Pattern, handler: EventHandler): () => void;
     
     /**
-     * Send event to multiple nodes
+     * Send event from multiple nodes
      */
     send(this: HappenNode[], event: any): any;
+    send(this: HappenNode[], target: HappenNode | HappenNode[], event: any): any;
     
     /**
      * Broadcast event from multiple nodes
@@ -56,37 +57,68 @@ if (!Array.prototype.on) {
   };
 
   /**
-   * Send event(s) to multiple nodes
+   * Send event(s) from multiple nodes
+   * Each node in the array sends the event independently
    */
-  Array.prototype.send = function(this: HappenNode[], event: any) {
+  Array.prototype.send = function(this: HappenNode[], targetOrEvent: any, eventIfTarget?: any) {
     if (!isNodeArray(this)) {
       throw new Error('send() can only be called on arrays of HappenNode instances');
     }
 
-    // Store send results for each node
-    const sendResults = new Map<string, SendResult>();
-    
-    this.forEach(node => {
-      const result = node.send(node, event);
-      sendResults.set(node.id, result);
-    });
+    // Check if this is array.send(event) or array.send(target, event)
+    const hasTarget = eventIfTarget !== undefined;
+    const target = hasTarget ? targetOrEvent : null;
+    const event = hasTarget ? eventIfTarget : targetOrEvent;
 
-    // Return object with return() method that collects all results
-    return {
-      return: async () => {
-        const results: Record<string, any> = {};
-        
-        for (const [nodeId, sendResult] of sendResults) {
-          try {
-            results[nodeId] = await sendResult.return();
-          } catch (error) {
-            results[nodeId] = { error: error instanceof Error ? error.message : String(error) };
+    if (!hasTarget) {
+      // array.send(event) - each node sends to itself (for testing/local processing)
+      const sendResults = new Map<string, SendResult>();
+      
+      this.forEach(node => {
+        const result = node.send(node, event);
+        sendResults.set(node.id, result);
+      });
+
+      return {
+        return: async () => {
+          const results: Record<string, any> = {};
+          
+          for (const [nodeId, sendResult] of sendResults) {
+            try {
+              results[nodeId] = await sendResult.return();
+            } catch (error) {
+              results[nodeId] = { error: error instanceof Error ? error.message : String(error) };
+            }
           }
+          
+          return results;
         }
-        
-        return results;
-      }
-    };
+      };
+    } else {
+      // array.send(target, event) - each node sends to the target
+      const sendResults = new Map<string, SendResult>();
+      
+      this.forEach(node => {
+        const result = node.send(target, event);
+        sendResults.set(node.id, result);
+      });
+
+      return {
+        return: async () => {
+          const results: Record<string, any> = {};
+          
+          for (const [nodeId, sendResult] of sendResults) {
+            try {
+              results[nodeId] = await sendResult.return();
+            } catch (error) {
+              results[nodeId] = { error: error instanceof Error ? error.message : String(error) };
+            }
+          }
+          
+          return results;
+        }
+      };
+    }
   };
 
   /**
