@@ -72,15 +72,15 @@ export const DEFAULT_EVENT_CONSUMER: Omit<ConsumerConfig, 'name' | 'streamName'>
 export class NodeJetStreamManager implements JetStreamManager {
   private jsm: any = null;
   
-  constructor(private natsConnection: any) {}
+  constructor(private natsTransport: any) {}
 
   async initialize(): Promise<void> {
-    if (!this.natsConnection) {
+    if (!this.natsTransport?.connection) {
       throw new Error('NATS connection required');
     }
 
     try {
-      this.jsm = await this.natsConnection.jetstreamManager();
+      this.jsm = await this.natsTransport.connection.jetstreamManager();
     } catch (error) {
       throw new Error(`Failed to initialize JetStream manager: ${error}`);
     }
@@ -308,8 +308,8 @@ export class MockJetStreamManager implements JetStreamManager {
  * Create JetStream manager based on environment
  */
 export function createJetStreamManager(adapter: any): JetStreamManager {
-  if (adapter.constructor.name === 'NodeTransportAdapter') {
-    return new NodeJetStreamManager(adapter.natsConnection);
+  if (adapter.constructor.name === 'NodeTransportAdapter' || adapter.constructor.name === 'NATSTransport') {
+    return new NodeJetStreamManager(adapter);
   } else if (adapter.constructor.name === 'WebSocketTransportAdapter') {
     return new WebSocketJetStreamManager(adapter);
   } else {

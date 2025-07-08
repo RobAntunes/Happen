@@ -17,6 +17,7 @@ export interface FlowContext {
 
 /**
  * Execute an event handler and process its result
+ * Handles both regular results and async generators
  */
 export async function executeHandler(
   handler: EventHandler,
@@ -25,6 +26,12 @@ export async function executeHandler(
 ): Promise<any> {
   try {
     const result = await handler(eventOrEvents, context);
+    
+    // Check if result is an async generator
+    if (result && typeof result === 'object' && typeof result[Symbol.asyncIterator] === 'function') {
+      return result; // Return the async iterator directly
+    }
+    
     return result;
   } catch (error) {
     // Errors are handled by returning error handlers
@@ -59,6 +66,11 @@ export async function processContinuum(
     
     try {
       result = await executeHandler(current, eventOrEvents, context);
+      
+      // If result is an async generator, return it immediately
+      if (result && typeof result === 'object' && typeof result[Symbol.asyncIterator] === 'function') {
+        return result;
+      }
       
       // If result is a function, continue the flow
       if (typeof result === 'function') {

@@ -175,6 +175,10 @@ export class WebSocketTransportAdapter extends BaseTransportAdapter {
       ? this.options.servers[0] 
       : this.options.servers;
 
+    if (!server) {
+      throw new Error('No NATS server URL provided');
+    }
+
     // Convert NATS URL to WebSocket URL if needed
     if (server.startsWith('nats://')) {
       return server.replace('nats://', 'ws://');

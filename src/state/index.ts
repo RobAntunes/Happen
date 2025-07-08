@@ -2,8 +2,9 @@
  * State management for Happen nodes
  */
 
-import { NodeState, ViewCollection, ID } from '../types';
+import { NodeState, ViewCollection, ID, HappenEvent } from '../types';
 import { EnhancedViewCollection, getGlobalViewRegistry } from '../views';
+import { getTemporalStore } from '../temporal';
 
 /**
  * Create a node state container
@@ -13,9 +14,12 @@ export class NodeStateContainer<T> implements NodeState<T> {
   private listeners: Set<(state: T) => void> = new Set();
   private eventWatchers = new Map<ID, Set<(state: T) => void>>();
   private views: EnhancedViewCollection;
+  private nodeId?: ID;
+  private temporalEnabled = false;
   
-  constructor(initialState: T, _nodeId?: ID) {
+  constructor(initialState: T, nodeId?: ID) {
     this.state = initialState;
+    this.nodeId = nodeId;
     this.views = this.createViewCollection();
   }
   
@@ -43,6 +47,26 @@ export class NodeStateContainer<T> implements NodeState<T> {
   }
   
   /**
+   * Update the state with event context for temporal recording
+   */
+  setWithEvent(updater: (state: T, views?: ViewCollection) => T, event: HappenEvent): void {
+    const newState = updater(this.state, this.createLegacyViewCollection());
+    if (newState !== this.state) {
+      this.state = newState;
+      
+      // Record temporal snapshot if enabled and we have a node ID
+      if (this.temporalEnabled && this.nodeId) {
+        const temporalStore = getTemporalStore(this.nodeId);
+        temporalStore.record(event, this.state).catch(err => {
+          console.warn('Failed to record temporal snapshot:', err);
+        });
+      }
+      
+      this.notifyListeners();
+    }
+  }
+  
+  /**
    * Watch for state changes when a specific event occurs
    */
   when(eventId: ID, callback: (state: T) => void): void {
@@ -50,6 +74,37 @@ export class NodeStateContainer<T> implements NodeState<T> {
       this.eventWatchers.set(eventId, new Set());
     }
     this.eventWatchers.get(eventId)!.add(callback);
+  }
+  
+  /**
+   * Enable temporal state recording for this node
+   */
+  enableTemporal(): void {
+    this.temporalEnabled = true;
+  }
+  
+  /**
+   * Disable temporal state recording for this node
+   */
+  disableTemporal(): void {
+    this.temporalEnabled = false;
+  }
+  
+  /**
+   * Check if temporal recording is enabled
+   */
+  isTemporalEnabled(): boolean {
+    return this.temporalEnabled;
+  }
+  
+  /**
+   * Get the temporal store for this node
+   */
+  getTemporal() {
+    if (!this.nodeId) {
+      throw new Error('Cannot access temporal store without node ID');
+    }
+    return getTemporalStore(this.nodeId);
   }
   
   /**

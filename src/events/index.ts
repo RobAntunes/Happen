@@ -4,6 +4,7 @@
 
 import { HappenEvent, EventContext, EventPayload } from '../types';
 import { generateId } from '../utils/id';
+import { getGlobalIntegrityManager } from '../integrity';
 
 /**
  * Create a new event with automatic ID and timestamp
@@ -30,7 +31,32 @@ export function createEvent<T = EventPayload>(
       },
       system: context?.system,
       user: context?.user,
+      origin: context?.origin,
     },
+  };
+}
+
+/**
+ * Create a secure event with integrity information
+ */
+export async function createSecureEvent<T = EventPayload>(
+  type: string,
+  payload: T,
+  context?: Partial<EventContext>,
+  nodeId: string = 'unknown'
+): Promise<HappenEvent<T>> {
+  const event = createEvent(type, payload, context, nodeId);
+  
+  // Add integrity information
+  const integrityManager = getGlobalIntegrityManager();
+  const integrity = await integrityManager.createIntegrity(event, nodeId);
+  
+  return {
+    ...event,
+    context: {
+      ...event.context,
+      integrity
+    }
   };
 }
 

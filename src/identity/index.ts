@@ -84,6 +84,12 @@ export interface AccessControlManager {
   listPermissions(principal: string): Permission[];
   audit(action: string, principal: string, resource: string, success: boolean, origin: { nodeId: string }, metadata?: any): void;
   getAuditLog(filter?: Partial<AuditLogEntry>): AuditLogEntry[];
+  getStats(): {
+    totalRules: number;
+    totalAuditEntries: number;
+    allowRules: number;
+    denyRules: number;
+  };
 }
 
 /**

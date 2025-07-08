@@ -13,6 +13,20 @@ export * from './state';
 export * from './continuum';
 export { getGlobalViewRegistry, createViewCollection } from './views';
 export * from './identity';
+export * from './temporal';
+
+// Re-export zero-allocation utilities (excluding conflicting types)
+export {
+  BufferPool,
+  StringTable,
+  BufferAccessor,
+  ZeroAllocationContext,
+  ZeroAllocationProcessor,
+  PerformanceMonitor,
+  wrapZeroAllocationHandler,
+  getGlobalZeroAllocationProcessor,
+  createZeroAllocationExtension,
+} from './zero-allocation';
 
 // Main API following the spec
 export { initializeHappen, createHappen } from './initialize';

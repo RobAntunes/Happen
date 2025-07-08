@@ -7,6 +7,7 @@ import { HappenNodeImpl } from './node';
 import { InMemoryGlobalState } from './global-state';
 import { NATSTransport } from './transport/nats';
 import { BrowserTransport } from './transport/browser';
+import { TemporalStateConfig, setNatsConnection } from './temporal';
 
 export interface HappenInitConfig {
   nats?: {
@@ -20,11 +21,17 @@ export interface HappenInitConfig {
     };
   };
   crypto?: any; // Browser Crypto API or Node crypto
+  temporal?: {
+    enabled: boolean;
+    defaultConfig?: TemporalStateConfig;
+  };
 }
 
 export interface HappenInstance {
-  createNode: <T = any>(name: string, options?: NodeOptions<T>) => HappenNode<T>;
+  createNode: <T = any>(name: string, options?: NodeOptions<T>, temporalConfig?: TemporalStateConfig) => HappenNode<T>;
   transport?: any;
+  enableTemporal: () => void;
+  disableTemporal: () => void;
 }
 
 /**
@@ -52,9 +59,18 @@ export function initializeHappen(config: HappenInitConfig = {}): HappenInstance 
     }
   }
   
+  // Set up temporal state if NATS is available
+  let temporalEnabled = config.temporal?.enabled || false;
+  
+  if (transport && transport.getNatsConnection) {
+    // Set the NATS connection for temporal state
+    setNatsConnection(transport.getNatsConnection());
+  }
+  
   // Create the node factory function
-  const createNode = <T = any>(name: string, options?: NodeOptions<T>): HappenNode<T> => {
-    const node = new HappenNodeImpl(name, options || {}, globalState);
+  const createNode = <T = any>(name: string, options?: NodeOptions<T>, temporalConfig?: TemporalStateConfig): HappenNode<T> => {
+    const finalTemporalConfig = temporalConfig || (temporalEnabled ? config.temporal?.defaultConfig || { enabled: true } : undefined);
+    const node = new HappenNodeImpl(name, options || {}, globalState, finalTemporalConfig);
     
     // If transport is available, connect the node
     if (transport) {
@@ -65,9 +81,19 @@ export function initializeHappen(config: HappenInitConfig = {}): HappenInstance 
     return node;
   };
   
+  const enableTemporal = () => {
+    temporalEnabled = true;
+  };
+  
+  const disableTemporal = () => {
+    temporalEnabled = false;
+  };
+  
   return {
     createNode,
-    transport
+    transport,
+    enableTemporal,
+    disableTemporal
   };
 }
 

@@ -43,12 +43,34 @@ export interface UserContext {
 }
 
 /**
+ * Origin context for tracking original source of events
+ */
+export interface OriginContext {
+  nodeId?: string;    // The node that immediately sent the event (added automatically)
+  sourceId?: string;  // Original source (e.g., user ID, service ID)
+  sourceType?: string; // Type of source (e.g., "user", "system", "service")
+  [key: string]: any;
+}
+
+/**
+ * Event integrity information
+ */
+export interface EventIntegrity {
+  hash: string;           // SHA-256 hash of canonical event
+  signature?: string;     // Digital signature of the hash
+  publicKey?: string;     // Public key used for signing
+  timestamp: number;      // When integrity was calculated
+}
+
+/**
  * Event context provides metadata about an event
  */
 export interface EventContext {
   causal: CausalContext;
   system?: SystemContext;
   user?: UserContext;
+  origin?: OriginContext;
+  integrity?: EventIntegrity;
   timestamp: number;
 }
 
@@ -86,10 +108,12 @@ export type EventHandlerResult<T = EventPayload> =
   | void 
   | EventHandler<T>
   | any // Any non-function value completes the flow
-  | Promise<void | EventHandler<T> | any>;
+  | Promise<void | EventHandler<T> | any>
+  | AsyncGenerator<any, any, unknown>; // Support for streaming results
 
 /**
  * Event handler function - receives event(s) and mutable context
+ * Can return regular results or async generators for streaming
  */
 export type EventHandler<T = EventPayload> = (
   eventOrEvents: HappenEvent<T> | HappenEvent<T>[],
@@ -105,18 +129,20 @@ export interface NodeState<T = any> {
   set(updater: (state: T) => T): void;
   set(updater: (state: T, views?: ViewCollection) => T): void;
   when(eventId: ID, callback: (state: T) => void): void;
+  enableTemporal(): void;
+  disableTemporal(): void;
+  isTemporalEnabled(): boolean;
+  getTemporal(): any;
 }
 
 /**
  * View collection for cross-node state access
  */
 export interface ViewCollection {
-  [key: string]: {
-    get<T, R>(selector: (state: T) => R): R;
-  };
   collect<T extends Record<string, any>>(selectors: {
     [K in keyof T]: (state: any) => T[K]
   }): T;
+  [key: string]: any;
 }
 
 /**
@@ -142,11 +168,17 @@ export interface NodeOptions<T = any> {
 
 /**
  * Result of send operation with return capability
+ * The returned value can be a regular value or an async generator for streaming
  */
 export interface SendResult {
-  return(): Promise<any>;
-  return(callback: (result: any) => void): void;
+  return(): Promise<any | AsyncGenerator<any, any, unknown>>;
+  return(callback: (result: any | AsyncGenerator<any, any, unknown>) => void): Promise<any | AsyncGenerator<any, any, unknown>>;
 }
+
+/**
+ * Zero-allocation handler type (imported at runtime to avoid circular deps)
+ */
+export type ZeroAllocationHandler = any;
 
 /**
  * Core node interface
@@ -157,6 +189,7 @@ export interface HappenNode<T = any> {
   readonly global: GlobalState;
   
   on(pattern: Pattern, handler: EventHandler): () => void;
+  zero(pattern: string, handler: ZeroAllocationHandler): () => void;
   send(target: HappenNode | HappenNode[] | ID, event: Partial<HappenEvent>): SendResult;
   send(target: HappenNode | HappenNode[] | ID, events: Partial<HappenEvent>[]): SendResult;
   broadcast(event: Partial<HappenEvent>): Promise<void>;

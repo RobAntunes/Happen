@@ -12,6 +12,7 @@ import {
   HappenEvent,
   ID,
   SendResult,
+  ZeroAllocationHandler,
 } from '../types';
 import { NodeStateContainer } from '../state';
 import { PatternEngine } from '../patterns';
@@ -24,6 +25,12 @@ import {
   NodeIdentity,
   KeyPair 
 } from '../identity';
+import { TemporalStateConfig } from '../temporal';
+import { 
+  getGlobalZeroAllocationProcessor,
+  wrapZeroAllocationHandler,
+  ZeroAllocationHandler as ZeroHandler 
+} from '../zero-allocation';
 
 /**
  * Default node options
@@ -53,23 +60,34 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
   private keyPair: KeyPair | null = null;
   private activeTimeouts = new Set<NodeJS.Timeout>();
   private expectingResponse = new Set<string>(); // Track events expecting responses
+  private temporalConfig?: TemporalStateConfig;
   
   constructor(
     name: string,
     options: NodeOptions<T> = {},
-    globalState: GlobalState
+    globalState: GlobalState,
+    temporalConfig?: TemporalStateConfig
   ) {
     this.id = generateNodeId(name);
     this.options = { ...DEFAULT_OPTIONS, ...options } as Required<NodeOptions<T>>;
     this.state = new NodeStateContainer(this.options.state, this.id);
     this.global = globalState;
     this.patterns = new PatternEngine();
+    this.temporalConfig = temporalConfig;
+    
+    // Enable temporal recording if configured
+    if (temporalConfig?.enabled) {
+      this.state.enableTemporal();
+    }
     
     // Register with view registry for cross-node state access
     getGlobalViewRegistry().registerNode(this);
     
     // Initialize identity if enabled
     this.initializeIdentity();
+    
+    // Auto-start the node - nodes should be ready to handle events immediately
+    this.running = true;
   }
   
   /**
@@ -87,13 +105,44 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
       const responseResolve = (event as any).responseResolve;
       
       // Process through continuum and capture the return value
-      const result = await processContinuum(handler, event, this.id);
+      // Create a wrapper that matches EventHandler signature
+      const wrapperHandler: EventHandler = (eventOrEvents, context) => {
+        // Since we're dealing with single events in this context, pass the event
+        return handler(eventOrEvents, context);
+      };
+      
+      const result = await processContinuum(wrapperHandler, event, this.id);
       
       // If we got a result and this event expects a response, resolve it
-      if (expectsResponse && responseResolve && result !== undefined) {
-        responseResolve(result);
+      if (expectsResponse && responseResolve) {
+        // Check if result is an async generator or a regular value
+        if (result && typeof result === 'object' && typeof result[Symbol.asyncIterator] === 'function') {
+          // For async generators, resolve with the generator
+          responseResolve(result);
+        } else if (result !== undefined) {
+          // For regular results, resolve if not undefined
+          responseResolve(result);
+        }
       }
     });
+  }
+  
+  /**
+   * Register a zero-allocation handler for performance-critical paths
+   */
+  zero(pattern: string, handler: ZeroAllocationHandler): () => void {
+    // Get the global zero-allocation processor
+    const processor = getGlobalZeroAllocationProcessor();
+    
+    // Wrap the zero-allocation handler as a regular event handler
+    const wrappedHandler = wrapZeroAllocationHandler(
+      processor, 
+      pattern, 
+      handler as ZeroHandler
+    );
+    
+    // Register it through the normal pattern system
+    return this.on(pattern, wrappedHandler);
   }
   
   /**
@@ -185,7 +234,14 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
       clearTimeout(timeoutId);
       this.activeTimeouts.delete(timeoutId);
       this.expectingResponse.delete(fullEvent.id);
-      responseResolve!(payload);
+      
+      // Check if payload is an async generator for streaming
+      if (payload && typeof payload === 'object' && typeof payload[Symbol.asyncIterator] === 'function') {
+        // Return the async generator directly for streaming
+        responseResolve!(payload);
+      } else {
+        responseResolve!(payload);
+      }
     };
     
     // Now emit the event
@@ -197,12 +253,20 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
         if (callback) {
           // Create a new promise that handles the callback
           return responsePromise.then((result) => {
-            callback(result);
-            return result;
+            // Check if result is an async generator
+            if (result && typeof result === 'object' && typeof result[Symbol.asyncIterator] === 'function') {
+              // For streaming results, call callback with the async iterator
+              callback(result);
+              return result;
+            } else {
+              // For regular results, call callback normally
+              callback(result);
+              return result;
+            }
           });
         }
         
-        // Return the original promise
+        // Return the original promise - it will resolve to either a regular value or async generator
         return responsePromise;
       }
     };
@@ -313,30 +377,63 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
     this.processing++;
     
     try {
-      // Execute all matching handlers
-      await Promise.all(
+      // Execute all matching handlers through continuum
+      const results = await Promise.all(
         matchers.map(matcher => 
           this.executeWithTimeout(
             async (event) => {
-              // Ensure handler is async
-              await matcher.handler(event);
+              // Use continuum processor to handle flow control and generators
+              // matcher.handler expects single event, but processContinuum expects EventHandler signature
+              // We need to wrap it to match EventHandler signature
+              const wrapperHandler: EventHandler = (_eventOrEvents, _context) => {
+                // matcher.handler is from PatternEngine and expects single event
+                return matcher.handler(event);
+              };
+              
+              const result = await processContinuum(wrapperHandler, event, this.id);
+              return result;
             },
             event
           )
         )
       );
+      
+      // Store results for potential streaming or send() operations
+      this.storeProcessingResults(event, results);
     } finally {
       this.processing--;
     }
   }
   
   /**
+   * Store processing results for send() operations
+   */
+  private storeProcessingResults(event: HappenEvent, results: any[]): void {
+    // Store results mapped by event ID for send() operations
+    if (this.expectingResponse.has(event.id)) {
+      // Find any generator results
+      const generatorResults = results.filter(result => 
+        result && typeof result === 'object' && typeof result[Symbol.asyncIterator] === 'function'
+      );
+      
+      // If we have generators, use the first one for streaming
+      if (generatorResults.length > 0) {
+        (event as any)._streamingResult = generatorResults[0];
+      } else {
+        // Use the first non-undefined result
+        const finalResult = results.find(result => result !== undefined);
+        (event as any)._result = finalResult;
+      }
+    }
+  }
+
+  /**
    * Execute a handler with timeout
    */
   private async executeWithTimeout(
-    handler: (event: HappenEvent) => Promise<void>,
+    handler: (event: HappenEvent) => Promise<any>,
     event: HappenEvent
-  ): Promise<void> {
+  ): Promise<any> {
     let timeoutId: NodeJS.Timeout;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(
@@ -346,7 +443,8 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
     });
     
     try {
-      await Promise.race([handler(event), timeoutPromise]);
+      const result = await Promise.race([handler(event), timeoutPromise]);
+      return result;
     } catch (error) {
       // Log error but don't crash the node
       console.error('Handler error:', error);
@@ -357,6 +455,9 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
         eventId: event.id,
         eventType: event.type,
       }, undefined, this.id));
+      
+      // Return undefined on error
+      return undefined;
     } finally {
       // Always clear the timeout
       clearTimeout(timeoutId!);
@@ -449,5 +550,33 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
   async verifySignature(data: Uint8Array, signature: string, publicKey: string): Promise<boolean> {
     const identityProvider = getGlobalIdentityProvider();
     return identityProvider.verifySignature(data, signature, publicKey);
+  }
+  
+  /**
+   * Get the temporal store for this node
+   */
+  getTemporal() {
+    return this.state.getTemporal();
+  }
+  
+  /**
+   * Enable temporal state recording
+   */
+  enableTemporal(): void {
+    this.state.enableTemporal();
+  }
+  
+  /**
+   * Disable temporal state recording
+   */
+  disableTemporal(): void {
+    this.state.disableTemporal();
+  }
+  
+  /**
+   * Get the temporal configuration for this node
+   */
+  getTemporalConfig(): TemporalStateConfig | undefined {
+    return this.temporalConfig;
   }
 }

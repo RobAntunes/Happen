@@ -392,10 +392,12 @@ export class HappenNode {
     // Fix: Use forEach on Set for better compatibility
     this.seenNonces.forEach(nonce => {
       const timestampStr = nonce.split('-')[0];
-      const timestamp = parseInt(timestampStr, 10);
-      if (!isNaN(timestamp) && (now - timestamp > this.MAX_NONCE_AGE)) {
-        this.seenNonces.delete(nonce);
-        removedCount++;
+      if (timestampStr) {
+        const timestamp = parseInt(timestampStr, 10);
+        if (!isNaN(timestamp) && (now - timestamp > this.MAX_NONCE_AGE)) {
+          this.seenNonces.delete(nonce);
+          removedCount++;
+        }
       }
     });
     if (removedCount > 0) {

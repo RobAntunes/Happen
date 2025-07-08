@@ -180,9 +180,9 @@ export async function createTransportAdapter(options: ConnectionOptions): Promis
   const env = detectEnvironment();
   
   if (env === 'node' || env === 'deno' || env === 'bun') {
-    // Server environments - use TCP NATS
-    const { NodeTransportAdapter } = await import('./node');
-    return new NodeTransportAdapter(options);
+    // Server environments - use real NATS transport
+    const { NATSTransport } = await import('./nats');
+    return new NATSTransport(options);
   } else if (env === 'browser' || env === 'webworker') {
     // Browser/WebWorker - use WebSocket NATS
     const { WebSocketTransportAdapter } = await import('./websocket');

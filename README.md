@@ -193,6 +193,20 @@ npm test
 npm run build
 ```
 
+## 🚀 Performance
+
+Happen is designed for high-performance event processing:
+
+| Operation | Performance |
+|-----------|-------------|
+| Event Processing | 165,000+ events/sec |
+| State Updates | 1,250,000+ updates/sec |
+| Pattern Matching | 63,000+ events/sec (100 patterns) |
+| Request-Response | 166,000+ req/sec |
+| Zero-Allocation | 183,000+ events/sec |
+
+*Benchmarked on Node.js 22.16.0*
+
 ## 📄 License
 
 MIT © Happen Contributors

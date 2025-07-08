@@ -97,19 +97,42 @@ export function not(pattern: Pattern): PatternFunction {
 }
 
 /**
+ * Compiled pattern matcher
+ */
+interface CompiledMatcher extends PatternMatcher {
+  matchFn: PatternFunction;
+}
+
+/**
  * Pattern matching engine
  */
 export class PatternEngine {
-  private matchers: PatternMatcher[] = [];
-  private cache = new Map<string, PatternMatcher[]>();
+  private matchers: CompiledMatcher[] = [];
+  private cache = new Map<string, CompiledMatcher[]>();
+  private hasContextPatterns = false;
+  // Fast lookup for exact string matches
+  private exactMatchers = new Map<string, CompiledMatcher[]>();
   
   /**
    * Add a pattern matcher
    */
   add(pattern: Pattern, handler: (event: HappenEvent) => void | Promise<void>, priority = 0): () => void {
-    const matcher: PatternMatcher = { pattern, handler, priority };
+    // Pre-compile the pattern matcher
+    const matchFn = createMatcher(pattern);
+    const matcher: CompiledMatcher = { pattern, handler, priority, matchFn };
+    
     this.matchers.push(matcher);
     this.clearCache();
+    
+    // Track if we have context-dependent patterns
+    if (typeof pattern === 'function') {
+      this.hasContextPatterns = true;
+    } else if (typeof pattern === 'string' && !pattern.includes('*') && !pattern.includes('{')) {
+      // It's an exact match pattern - add to fast lookup
+      const exact = this.exactMatchers.get(pattern) || [];
+      exact.push(matcher);
+      this.exactMatchers.set(pattern, exact);
+    }
     
     // Return unsubscribe function
     return () => {
@@ -117,6 +140,19 @@ export class PatternEngine {
       if (index !== -1) {
         this.matchers.splice(index, 1);
         this.clearCache();
+        
+        // Remove from exact matchers if applicable
+        if (typeof pattern === 'string' && !pattern.includes('*') && !pattern.includes('{')) {
+          const exact = this.exactMatchers.get(pattern);
+          if (exact) {
+            const idx = exact.indexOf(matcher);
+            if (idx !== -1) exact.splice(idx, 1);
+            if (exact.length === 0) this.exactMatchers.delete(pattern);
+          }
+        }
+        
+        // Re-check if we still have context patterns
+        this.hasContextPatterns = this.matchers.some(m => typeof m.pattern === 'function');
       }
     };
   }
@@ -124,23 +160,49 @@ export class PatternEngine {
   /**
    * Find all matching handlers for an event type
    */
-  findMatches(event: HappenEvent): PatternMatcher[] {
-    // Don't cache when patterns might depend on event context
-    const hasContextPatterns = this.matchers.some(m => typeof m.pattern === 'function');
+  findMatches(event: HappenEvent): CompiledMatcher[] {
+    // Fast path: check exact matchers first
+    const exactMatches = this.exactMatchers.get(event.type);
     
-    if (!hasContextPatterns) {
+    // If we only have exact patterns and found matches, return them sorted
+    if (exactMatches && !this.hasContextPatterns && this.matchers.length === this.exactMatchers.size) {
+      return exactMatches.sort((a, b) => b.priority - a.priority);
+    }
+    
+    // Use cache for simple string patterns
+    if (!this.hasContextPatterns) {
       const cached = this.cache.get(event.type);
       if (cached) return cached;
     }
     
-    const matches = this.matchers
-      .filter(m => {
-        const matchFn = createMatcher(m.pattern);
-        return matchFn(event.type, event);
-      })
-      .sort((a, b) => b.priority - a.priority);
+    // Build matches list starting with exact matches
+    const matches: CompiledMatcher[] = [];
     
-    if (!hasContextPatterns) {
+    // Add exact matches first (already pre-filtered)
+    if (exactMatches) {
+      matches.push(...exactMatches);
+    }
+    
+    // Then check other patterns (skip exact patterns we already added)
+    for (const matcher of this.matchers) {
+      // Skip if it's an exact pattern (already handled)
+      if (typeof matcher.pattern === 'string' && 
+          !matcher.pattern.includes('*') && 
+          !matcher.pattern.includes('{')) {
+        continue;
+      }
+      
+      // Test the pattern
+      if (matcher.matchFn(event.type, event)) {
+        matches.push(matcher);
+      }
+    }
+    
+    // Sort by priority
+    matches.sort((a, b) => b.priority - a.priority);
+    
+    // Cache if possible
+    if (!this.hasContextPatterns) {
       this.cache.set(event.type, matches);
     }
     
@@ -152,6 +214,7 @@ export class PatternEngine {
    */
   private clearCache(): void {
     this.cache.clear();
+    // Note: we don't clear exactMatchers as they're maintained separately
   }
   
   /**
