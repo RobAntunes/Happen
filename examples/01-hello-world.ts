@@ -27,9 +27,6 @@ async function main() {
     type: 'hello',
     payload: { message: 'Hello, Happen!' }
   });
-  
-  // Give time for async processing
-  await new Promise(resolve => setTimeout(resolve, 100));
 }
 
 main().catch(console.error);
