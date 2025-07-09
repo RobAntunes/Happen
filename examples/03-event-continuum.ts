@@ -113,9 +113,7 @@ async function main() {
       customerEmail: 'customer@example.com'
     }
   });
-  
-  console.log('\n---\n');
-  
+
   // Test invalid order
   await orchestrator.send(validator, {
     type: 'validate-order',
@@ -127,4 +125,4 @@ async function main() {
   });
 }
 
-main().catch(console.error);
+main()

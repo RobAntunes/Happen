@@ -31,8 +31,6 @@ async function main() {
     type: 'hello',
     payload: { message: 'Hello, Happen!' }
   }).return();
-  
-  console.log('Response:', response);
 }
 
-main().catch(console.error);
+main()
