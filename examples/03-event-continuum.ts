@@ -114,11 +114,6 @@ async function main() {
     }
   });
   
-  // Wait for async processing
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  console.log('\n---\n');
-  
   // Test invalid order
   await orchestrator.send(validator, {
     type: 'validate-order',
@@ -128,9 +123,6 @@ async function main() {
       customerEmail: 'bigspender@example.com'
     }
   });
-  
-  // Wait for async processing
-  await new Promise(resolve => setTimeout(resolve, 500));
 }
 
-main().catch(console.error);
+main()
