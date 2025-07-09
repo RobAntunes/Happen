@@ -1,3 +1,5 @@
+/// <reference path="../types/browser.d.ts" />
+
 /**
  * Represents the detailed contextual information associated with a user interaction.
  */

@@ -1,3 +1,5 @@
+/// <reference path="../types/browser.d.ts" />
+
 import type { IEventEmitter } from '../core/runtime-modules';
 
 // Define a default channel name, could be made configurable

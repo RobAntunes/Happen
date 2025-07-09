@@ -1,4 +1,6 @@
-import type { ICrypto, JsonWebKey, BufferSource } from '../core/runtime-modules';
+/// <reference path="../types/browser.d.ts" />
+
+import type { ICrypto } from '../core/runtime-modules';
 
 // --- Helpers (Identical to BrowserCrypto) --- //
 

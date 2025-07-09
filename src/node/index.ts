@@ -9,6 +9,7 @@ import {
   GlobalState,
   Pattern,
   EventHandler,
+  SimpleEventHandler,
   HappenEvent,
   ID,
   SendResult,
@@ -93,7 +94,7 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
   /**
    * Register an event handler
    */
-  on(pattern: Pattern, handler: EventHandler): () => void {
+  on(pattern: Pattern, handler: SimpleEventHandler): () => void {
     return this.patterns.add(pattern, async (event) => {
       // Check acceptance - simple array lookup with pattern matching
       if (!this.shouldAcceptEvent(event.context.causal.sender)) {
@@ -107,8 +108,12 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
       // Process through continuum and capture the return value
       // Create a wrapper that matches EventHandler signature
       const wrapperHandler: EventHandler = (eventOrEvents, context) => {
-        // Since we're dealing with single events in this context, pass the event
-        return handler(eventOrEvents, context);
+        // Since we're dealing with single events in this context, extract the single event
+        const singleEvent = Array.isArray(eventOrEvents) ? eventOrEvents[0] : eventOrEvents;
+        if (!singleEvent) {
+          return; // No event to process
+        }
+        return handler(singleEvent, context);
       };
       
       const result = await processContinuum(wrapperHandler, event, this.id);
@@ -272,16 +277,6 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
     };
   }
   
-  /**
-   * Broadcast an event to all nodes
-   */
-  async broadcast(event: Partial<HappenEvent>): Promise<void> {
-    const fullEvent = this.createOutgoingEvent(event);
-    
-    // In the real implementation, this would use NATS broadcast
-    // For now, just emit locally
-    this.emit(fullEvent);
-  }
   
   /**
    * Emit an event locally
@@ -298,6 +293,23 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
     }
     
     this.processEvent(fullEvent);
+  }
+  
+  /**
+   * Broadcast an event to all nodes
+   */
+  async broadcast(event: Partial<HappenEvent>): Promise<void> {
+    const fullEvent = this.createOutgoingEvent(event);
+    
+    // In a real implementation, this would use NATS or other transport
+    // For now, we'll use the global state to simulate broadcasting
+    // by emitting to all registered nodes
+    const viewRegistry = getGlobalViewRegistry();
+    const allNodes = viewRegistry.getAllNodes();
+    
+    for (const node of allNodes) {
+      node.emit(fullEvent);
+    }
   }
   
   /**
@@ -512,8 +524,20 @@ export class HappenNodeImpl<T = any> implements HappenNode<T> {
       
       // Wildcard pattern (e.g., "order-*")
       if (pattern.includes('*')) {
+        // First try exact pattern match
         const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
-        return regex.test(nodeId);
+        if (regex.test(nodeId)) return true;
+        
+        // Then try with node- prefix (for patterns like "order-service-*" matching "node-order-service-v1-timestamp-hash")
+        const nodePattern = `node-${pattern}`;
+        const nodeRegex = new RegExp('^' + nodePattern.replace(/\*/g, '.*') + '$');
+        return nodeRegex.test(nodeId);
+      }
+      
+      // Check if the nodeId contains the pattern (for node IDs like "node-order-service-timestamp-hash")
+      // This allows "order-service" to match "node-order-service-timestamp-hash"
+      if (nodeId.includes(`node-${pattern}-`)) {
+        return true;
       }
       
       return false;

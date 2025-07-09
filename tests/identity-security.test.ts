@@ -7,21 +7,15 @@ import { initializeHappen } from '../src';
 import { 
   getGlobalIdentityProvider, 
   getGlobalAccessControl,
-  CryptoIdentityProvider,
-  MemoryAccessControlManager 
+  // CryptoIdentityProvider,
+  // MemoryAccessControlManager 
 } from '../src/identity';
 
 describe('Identity & Security Features', () => {
   let happen: any;
-  let cleanup: (() => Promise<void>)[] = [];
   
   beforeEach(() => {
     happen = initializeHappen();
-  });
-  
-  afterEach(async () => {
-    await Promise.all(cleanup.map(fn => fn()));
-    cleanup = [];
   });
 
   describe('1. Node Identity', () => {
@@ -29,10 +23,7 @@ describe('Identity & Security Features', () => {
       const orderNode = happen.createNode('order-service');
       const inventoryNode = happen.createNode('inventory-service');
       
-      cleanup.push(
-        () => orderNode.stop(),
-        () => inventoryNode.stop()
-      );
+      // Nodes are autonomous - no cleanup needed
       
       // Nodes should have unique IDs
       expect(orderNode.id).toBeDefined();
@@ -85,10 +76,7 @@ describe('Identity & Security Features', () => {
       const orderNode = happen.createNode('order-service');
       const inventoryNode = happen.createNode('inventory-service');
       
-      cleanup.push(
-        () => orderNode.stop(),
-        () => inventoryNode.stop()
-      );
+      // Nodes are autonomous - no cleanup needed
       
       let receivedEvent: any = null;
       
@@ -111,10 +99,7 @@ describe('Identity & Security Features', () => {
       const orderNode = happen.createNode('order-service');
       const inventoryNode = happen.createNode('inventory-service');
       
-      cleanup.push(
-        () => orderNode.stop(),
-        () => inventoryNode.stop()
-      );
+      // Nodes are autonomous - no cleanup needed
       
       let receivedEvent: any = null;
       
@@ -145,11 +130,7 @@ describe('Identity & Security Features', () => {
       const nodeB = happen.createNode('node-b');
       const nodeC = happen.createNode('node-c');
       
-      cleanup.push(
-        () => nodeA.stop(),
-        () => nodeB.stop(),
-        () => nodeC.stop()
-      );
+      // Nodes are autonomous - no cleanup needed
       
       let eventChain: any[] = [];
       
@@ -215,14 +196,10 @@ describe('Identity & Security Features', () => {
         acceptFrom: ['order-service']
       });
       
-      cleanup.push(
-        () => orderNode.stop(),
-        () => inventoryNode.stop(),
-        () => paymentNode.stop()
-      );
+      // Nodes are autonomous - no cleanup needed
       
       let acceptedEvents: any[] = [];
-      let rejectedEvents: any[] = [];
+      // let rejectedEvents: any[] = [];
       
       paymentNode.on('process-payment', (event: any) => {
         acceptedEvents.push(event);
@@ -254,12 +231,7 @@ describe('Identity & Security Features', () => {
         acceptFrom: ['order-service-*', 'admin-*']
       });
       
-      cleanup.push(
-        () => orderNode.stop(),
-        () => orderNode2.stop(),
-        () => inventoryNode.stop(),
-        () => paymentNode.stop()
-      );
+      // Nodes are autonomous - no cleanup needed
       
       let acceptedEvents: any[] = [];
       
@@ -293,19 +265,14 @@ describe('Identity & Security Features', () => {
 
     it('should support custom accept function', async () => {
       const orderNode = happen.createNode('order-service');
-      const inventoryNode = happen.createNode('inventory-service');
       const paymentNode = happen.createNode('payment-service', {
-        accept: (origin) => {
-          // Only accept events from nodes ending with '-service'
-          return origin.nodeId.endsWith('-service');
+        accept: (origin: any) => {
+          // Only accept events from nodes containing 'service' in their name
+          return origin.nodeId.includes('service');
         }
       });
       
-      cleanup.push(
-        () => orderNode.stop(),
-        () => inventoryNode.stop(),
-        () => paymentNode.stop()
-      );
+      // Nodes are autonomous - no cleanup needed
       
       let acceptedEvents: any[] = [];
       
@@ -381,15 +348,15 @@ describe('Identity & Security Features', () => {
       // Get audit log
       const auditLog = acl.getAuditLog();
       expect(auditLog).toHaveLength(2);
-      expect(auditLog[0].action).toBe('read');
-      expect(auditLog[0].success).toBe(true);
-      expect(auditLog[1].action).toBe('write');
-      expect(auditLog[1].success).toBe(false);
+      expect(auditLog[0]?.action).toBe('read');
+      expect(auditLog[0]?.success).toBe(true);
+      expect(auditLog[1]?.action).toBe('write');
+      expect(auditLog[1]?.success).toBe(false);
       
       // Filter audit log
       const failedEvents = acl.getAuditLog({ success: false });
       expect(failedEvents).toHaveLength(1);
-      expect(failedEvents[0].action).toBe('write');
+      expect(failedEvents[0]?.action).toBe('write');
     });
   });
 
@@ -404,10 +371,7 @@ describe('Identity & Security Features', () => {
       const tenant1OrderNode = createTenantNode('tenant1', 'order-service');
       const tenant2OrderNode = createTenantNode('tenant2', 'order-service-2');
       
-      cleanup.push(
-        () => tenant1OrderNode.stop(),
-        () => tenant2OrderNode.stop()
-      );
+      // Nodes are autonomous - no cleanup needed
       
       let tenant1Events: any[] = [];
       let tenant2Events: any[] = [];
@@ -424,10 +388,7 @@ describe('Identity & Security Features', () => {
       const mockSender1 = happen.createNode('tenant:tenant1:api-gateway');
       const mockSender2 = happen.createNode('tenant:tenant2:api-gateway');
       
-      cleanup.push(
-        () => mockSender1.stop(),
-        () => mockSender2.stop()
-      );
+      // Nodes are autonomous - no cleanup needed
       
       mockSender1.send(tenant1OrderNode, {
         type: 'process-order',
@@ -459,7 +420,7 @@ describe('Identity & Security Features', () => {
     it('should support domain-specific authorization in event handlers', async () => {
       const orderNode = happen.createNode('order-service');
       
-      cleanup.push(() => orderNode.stop());
+      // Nodes are autonomous - no cleanup needed
       
       // Mock order database
       const orders = new Map([

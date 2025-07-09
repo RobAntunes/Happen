@@ -2,6 +2,8 @@
  * WebSocket NATS transport adapter for browsers
  */
 
+/// <reference path="../types/browser.d.ts" />
+
 import { TransportAdapter } from '../types';
 import { BaseTransportAdapter, ConnectionOptions } from './index';
 

@@ -6,17 +6,10 @@
 import { initializeHappen } from '../src';
 
 describe('Unified Event Space', () => {
-  let cleanup: (() => Promise<void>)[] = [];
   let happen: any;
   
   beforeEach(() => {
     happen = initializeHappen();
-  });
-  
-  afterEach(async () => {
-    // Clean up all resources
-    await Promise.all(cleanup.map(fn => fn()));
-    cleanup = [];
   });
 
   describe('Cross-Boundary Communication', () => {
@@ -24,10 +17,7 @@ describe('Unified Event Space', () => {
       const localNode = happen.createNode('local-node');
       const remoteNode = happen.createNode('remote-node');
       
-      cleanup.push(
-        () => localNode.stop(),
-        () => remoteNode.stop()
-      );
+      // Nodes are autonomous - no // cleanup needed
 
       let receivedEvent: any = null;
       
@@ -36,9 +26,7 @@ describe('Unified Event Space', () => {
         receivedEvent = event;
       });
 
-      // Start nodes to process events
-      await localNode.start();
-      await remoteNode.start();
+      // Nodes are autonomous - no need to start
 
       // Same send API regardless of location
       localNode.send(remoteNode, {
@@ -57,11 +45,7 @@ describe('Unified Event Space', () => {
       const nodeB = happen.createNode('node-b');
       const nodeC = happen.createNode('node-c');
       
-      cleanup.push(
-        () => nodeA.disconnect(),
-        () => nodeB.disconnect(),
-        () => nodeC.disconnect()
-      );
+      // Nodes are autonomous - no // cleanup needed
 
       let eventChain: any[] = [];
       
@@ -110,10 +94,7 @@ describe('Unified Event Space', () => {
       const senderNode = happen.createNode('sender');
       const receiverNode = happen.createNode('receiver');
       
-      cleanup.push(
-        () => senderNode.disconnect(),
-        () => receiverNode.disconnect()
-      );
+      // Nodes are autonomous - no cleanup needed
 
       const complexData = {
         string: 'test',
@@ -158,10 +139,7 @@ describe('Unified Event Space', () => {
       const nodeA = happen.createNode('node-a');
       const nodeB = happen.createNode('node-b');
       
-      cleanup.push(
-        () => nodeA.disconnect(),
-        () => nodeB.disconnect()
-      );
+      // Nodes are autonomous - no cleanup needed
 
       // Set state on node A
       await nodeA.global.set('shared-value', { counter: 1 });
@@ -182,19 +160,16 @@ describe('Unified Event Space', () => {
       const nodeA = happen.createNode('node-a');
       const nodeB = happen.createNode('node-b');
       
-      cleanup.push(
-        () => nodeA.disconnect(),
-        () => nodeB.disconnect()
-      );
+      // Nodes are autonomous - no cleanup needed
 
       let watchedValues: any[] = [];
       
       // Watch on node A
-      const unwatch = nodeA.global.watch('watched-key', (value: any) => {
+      nodeA.global.watch('watched-key', (value: any) => {
         watchedValues.push(value);
       });
       
-      cleanup.push(() => Promise.resolve(unwatch()));
+      // Cleanup will happen automatically
 
       await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -217,10 +192,7 @@ describe('Unified Event Space', () => {
       const senderNode = happen.createNode('sender');
       const receiverNode = happen.createNode('receiver');
       
-      cleanup.push(
-        () => senderNode.disconnect(),
-        () => receiverNode.disconnect()
-      );
+      // Nodes are autonomous - no cleanup needed
 
       // Create large data (1MB)
       const largeData = new Array(1024 * 1024).fill(0).map((_, i) => i);
@@ -257,7 +229,7 @@ describe('Unified Event Space', () => {
     it('should handle network errors gracefully', async () => {
       const node = happen.createNode('test-node');
       
-      cleanup.push(() => node.disconnect());
+      // Nodes are autonomous - no cleanup needed
 
       // Should not throw even if transport fails
       expect(() => {
@@ -272,10 +244,7 @@ describe('Unified Event Space', () => {
       const nodeA = happen.createNode('node-a');
       const nodeB = happen.createNode('node-b');
       
-      cleanup.push(
-        () => nodeA.disconnect(),
-        () => nodeB.disconnect()
-      );
+      // Nodes are autonomous - no cleanup needed
 
       // Create circular reference (should not crash)
       const circularObj: any = { name: 'test' };
@@ -307,10 +276,7 @@ describe('Unified Event Space', () => {
       const nodeA = happen.createNode('node-a');
       const nodeB = happen.createNode('node-b');
       
-      cleanup.push(
-        () => nodeA.disconnect(),
-        () => nodeB.disconnect()
-      );
+      // Nodes are autonomous - no cleanup needed
 
       const startTime = performance.now();
       let endTime: number;
@@ -334,10 +300,7 @@ describe('Unified Event Space', () => {
       const nodeA = happen.createNode('node-a');
       const nodeB = happen.createNode('node-b');
       
-      cleanup.push(
-        () => nodeA.disconnect(),
-        () => nodeB.disconnect()
-      );
+      // Nodes are autonomous - no cleanup needed
 
       let receivedCount = 0;
       

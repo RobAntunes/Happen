@@ -258,8 +258,8 @@ describe('Confluence - Array Operations', () => {
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // Each node should receive from itself (local broadcast only for now)
-      expect(received).toHaveLength(3); // 3 nodes * 1 local broadcast each
+      // Each node should receive from all nodes (true broadcast)
+      expect(received).toHaveLength(9); // 3 nodes * 3 broadcasts each (including self)
     });
   });
 });

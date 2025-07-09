@@ -40,6 +40,7 @@ export interface FlowBalanceConfig {
   };
   streamName: string;
   consumerPrefix: string;
+  testConsumers?: string[]; // For testing - override consumer list
 }
 
 export const DEFAULT_FLOW_BALANCE_CONFIG: FlowBalanceConfig = {
@@ -200,8 +201,8 @@ export class FlowBalanceMonitor {
     }
     
     const previousState = this.nodeStates.get(nodeId);
+    this.nodeStates.set(nodeId, state);
     if (previousState !== state) {
-      this.nodeStates.set(nodeId, state);
       console.log(`Node ${nodeId} state changed: ${previousState} -> ${state}`);
     }
   }
@@ -249,7 +250,7 @@ export class FlowBalanceMonitor {
         type: 'partition',
         severity: unhealthyNodes.length >= nodes.length / 2 ? 'critical' : 'severe',
         confidence: unhealthyNodes.length / nodes.length,
-        affectedNodes: unhealthyNodes.map(this.extractNodeId),
+        affectedNodes: unhealthyNodes.map(node => this.extractNodeId(node)),
         metrics: {
           consumerLag: avgLag,
           messagesWaiting: avgLag,
@@ -332,7 +333,7 @@ export class FlowBalanceMonitor {
         type: 'overload',
         severity: avgLag >= this.config.thresholds.severeLag ? 'severe' : 'moderate',
         confidence: degradedNodes.length / nodes.length,
-        affectedNodes: degradedNodes.map(this.extractNodeId),
+        affectedNodes: degradedNodes.map(node => this.extractNodeId(node)),
         metrics: {
           consumerLag: avgLag,
           messagesWaiting: avgLag,
@@ -394,7 +395,13 @@ export class FlowBalanceMonitor {
    */
   private async getActiveConsumers(): Promise<string[]> {
     // In a real implementation, this would query JetStream for active consumers
-    // For now, we'll return a mock list
+    
+    // For testing - use override if provided
+    if (this.config.testConsumers) {
+      return this.config.testConsumers;
+    }
+    
+    // Default list for production
     return [
       'happen-node-order-service',
       'happen-node-payment-service',
