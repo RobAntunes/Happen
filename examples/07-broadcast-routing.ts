@@ -120,8 +120,6 @@ async function main() {
     }
   });
   
-  // Wait for broadcast to complete
-  await new Promise(resolve => setTimeout(resolve, 100));
   
   // Test 3: Health monitoring with acceptance control
   console.log('\n--- Test 3: Health Monitoring ---');
@@ -184,8 +182,6 @@ async function main() {
     payload: { severity: 'info', message: 'Backup completed successfully' }
   });
   
-  // Wait for all events to process
-  await new Promise(resolve => setTimeout(resolve, 200));
   
   console.log('\n✅ Broadcast and routing demo completed!');
 }

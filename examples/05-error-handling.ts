@@ -222,8 +222,6 @@ async function main() {
       console.error('Payment failed completely:', error.message);
     }
     
-    // Small delay between requests
-    await new Promise(resolve => setTimeout(resolve, 500));
   }
   
   // Show circuit breaker state
