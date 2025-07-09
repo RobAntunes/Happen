@@ -214,8 +214,6 @@ async function main() {
     payload: { userId: 'user-456', productId: 'product-003', quantity: 1 }
   });
   
-  // Wait for processing
-  await new Promise(resolve => setTimeout(resolve, 100));
   
   console.log('\n--- Cart Contents ---');
   console.log('User 123:', JSON.stringify(cartView.get('cart-user-123'), null, 2));

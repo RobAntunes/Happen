@@ -114,9 +114,6 @@ async function main() {
     }
   });
   
-  // Wait for async processing
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
   console.log('\n---\n');
   
   // Test invalid order
@@ -128,9 +125,6 @@ async function main() {
       customerEmail: 'bigspender@example.com'
     }
   });
-  
-  // Wait for async processing
-  await new Promise(resolve => setTimeout(resolve, 500));
 }
 
 main().catch(console.error);

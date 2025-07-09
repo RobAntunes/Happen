@@ -14,22 +14,25 @@ async function main() {
   const greeterNode = happen.createNode('greeter');
   const listenerNode = happen.createNode('listener');
   
-  // Register event handler
-  listenerNode.on('hello', (eventOrEvents) => {
-    // Handle single event (common case)
-    const event = Array.isArray(eventOrEvents) ? eventOrEvents[0] : eventOrEvents;
+  // Register event handler that returns a response
+  listenerNode.on('hello', (event) => {
     console.log(`Received: ${event.payload.message}`);
     console.log(`From: ${event.context.causal.sender}`);
+    
+    // Return a response
+    return {
+      message: 'Hello back from listener!',
+      timestamp: Date.now()
+    };
   });
   
-  // Send event
-  greeterNode.send(listenerNode, {
+  // Send event and wait for response
+  const response = await greeterNode.send(listenerNode, {
     type: 'hello',
     payload: { message: 'Hello, Happen!' }
-  });
+  }).return();
   
-  // Give time for async processing
-  await new Promise(resolve => setTimeout(resolve, 100));
+  console.log('Response:', response);
 }
 
 main().catch(console.error);

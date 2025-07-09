@@ -43,3 +43,6 @@ temp/
 npm-debug.log*
 lerna-debug.log*
 
+# Documentation drafts
+happen_txt_spec.rtf
+
