@@ -134,6 +134,71 @@ modernService.send(legacyAPI, {
 - [Architecture Overview](docs/architecture.md)
 - [Examples](examples/)
 
+# Installation
+
+## Current Development Phase
+
+Happen is currently in active development and not yet published to NPM. To get started, you'll need to clone the repository directly from GitHub.
+
+## Getting Started
+
+Clone the Happen repository and set up your development environment:
+
+```bash
+# Clone the Happen repository
+git clone https://github.com/RobAntunes/Happen.git happen
+
+# Navigate to the project directory
+cd happen
+
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+# Run tests to verify installation
+npm test
+```
+
+## Quick Setup Example
+
+Once you've cloned and built Happen, you can start using it immediately:
+
+```javascript
+// Import Happen after cloning and building
+import { initializeHappen } from './happen/dist/index.js';
+
+// Initialize with default configuration
+const { createNode } = initializeHappen();
+
+// Create your first node
+const myNode = createNode('my-first-node');
+
+// Set up a simple event handler
+myNode.on('hello', (event) => {
+  console.log('Received:', event.payload);
+  return { success: true };
+});
+
+// Send an event
+myNode.broadcast({
+  type: 'hello',
+  payload: { message: 'Hello, Happen!' }
+});
+```
+
+## Coming Soon
+
+Happen will be available via NPM once we reach our first stable release. Stay tuned for:
+
+```bash
+# Future NPM installation (coming soon)
+npm install happen
+```
+
+**Note**: Make sure you have Node.js 18+ installed for optimal compatibility.
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
