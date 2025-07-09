@@ -8,12 +8,18 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-    
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node-version: [18.x, 20.x, 22.x]
-    
+        exclude:
+          # Skip some combinations to reduce CI time
+          - os: windows-latest
+            node-version: 18.x
+          - os: macos-latest
+            node-version: 18.x
+
     steps:
     - uses: actions/checkout@v4
     
@@ -26,22 +32,28 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Run tests
-      run: npm test
-    
     - name: Run linter
-      run: npm run lint || true  # Allow to fail for now
-    
-    - name: Run type check
-      run: npm run typecheck || true  # Allow to fail for now
+      run: npm run lint
+      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
     
     - name: Build
       run: npm run build
+    
+    - name: Run tests
+      run: npm test
+    
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
 
-  coverage:
+  type-check:
     runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push'
     
     steps:
     - uses: actions/checkout@v4
@@ -49,16 +61,94 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 20.x
+        node-version: '20.x'
         cache: 'npm'
     
     - name: Install dependencies
       run: npm ci
     
-    - name: Run tests with coverage
-      run: npm run test -- --coverage
+    - name: Type check
+      run: npm run typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, type-check]
     
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build
+      run: npm run build
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+        retention-days: 7
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    
+    - name: Check if version changed
+      id: version
+      run: |
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        git fetch --tags
+        if git rev-list -n 1 "v$CURRENT_VERSION" 2>/dev/null; then
+          echo "Version $CURRENT_VERSION already exists"
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          echo "Version $CURRENT_VERSION is new"
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Create Release
+      if: steps.version.outputs.changed == 'true'
+      uses: actions/create-release@v1
       env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        release_name: Release v${{ steps.version.outputs.version }}
+        draft: false
+        prerelease: false
+    
+    - name: Publish to npm
+      if: steps.version.outputs.changed == 'true'
+      run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

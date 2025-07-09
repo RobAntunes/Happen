@@ -17,7 +17,7 @@ describe('HappenNode', () => {
   });
 
   afterEach(async () => {
-    await node.stop();
+    // Nodes are autonomous - no need to stop
   });
 
   describe('initialization', () => {
@@ -68,7 +68,7 @@ describe('HappenNode', () => {
       const handler = jest.fn();
       node.on('test.event', handler);
       
-      await node.start();
+      // Nodes are autonomous - no need to start
       node.emit({ type: 'test.event', payload: { data: 'test' } });
       
       // Give time for async processing
@@ -90,7 +90,7 @@ describe('HappenNode', () => {
       node.on(patterns.prefix('order.'), prefixHandler);
       node.on('order.created', exactHandler);
       
-      await node.start();
+      // Nodes are autonomous - no need to start
       node.emit({ type: 'order.created', payload: {} });
       
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -99,16 +99,14 @@ describe('HappenNode', () => {
       expect(exactHandler).toHaveBeenCalled();
     });
 
-    it('should queue events before node is started', async () => {
+    it('should process events immediately as nodes are autonomous', async () => {
       const handler = jest.fn();
       node.on('test.event', handler);
       
-      // Emit before starting
+      // Emit event - should be processed immediately
       node.emit({ type: 'test.event', payload: {} });
-      expect(handler).not.toHaveBeenCalled();
       
-      // Start node - should process queued events
-      await node.start();
+      // Give time for async processing
       await new Promise(resolve => setTimeout(resolve, 10));
       
       expect(handler).toHaveBeenCalled();
@@ -118,7 +116,7 @@ describe('HappenNode', () => {
       const handler = jest.fn();
       node.on('test.event', handler);
       
-      await node.start();
+      // Nodes are autonomous - no need to start
       
       node.emit({ type: 'test.event', payload: { id: 1 } });
       node.emit({ type: 'test.event', payload: { id: 2 } });
@@ -138,7 +136,7 @@ describe('HappenNode', () => {
       }, globalState);
       
       nodeWithAcceptance.on('test.event', handler);
-      await nodeWithAcceptance.start();
+      // Nodes are autonomous - no need to start
       
       // Create event from blocked node
       const blockedEvent = createEvent('test.event', {}, {}, 'blocked-node');
@@ -166,7 +164,7 @@ describe('HappenNode', () => {
         expect.any(Object) // Handler context
       );
       
-      await nodeWithAcceptance.stop();
+      // Nodes are autonomous - no need to stop
     });
   });
 
@@ -195,7 +193,7 @@ describe('HappenNode', () => {
       const handler = jest.fn();
       node.on('test.event', handler);
       
-      await node.start();
+      // Nodes are autonomous - no need to start
       node.emit({ type: 'test.event', payload: {} });
       
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -216,7 +214,7 @@ describe('HappenNode', () => {
       const handler = jest.fn();
       node.on('test.event', handler);
       
-      await node.start();
+      // Nodes are autonomous - no need to start
       node.emit({
         type: 'test.event',
         payload: {},
@@ -270,7 +268,7 @@ describe('HappenNode', () => {
       }, globalState);
       
       limitedNode.on('slow.event', slowHandler);
-      await limitedNode.start();
+      // Nodes are autonomous - no need to start
       
       // Emit 5 events quickly
       for (let i = 0; i < 5; i++) {
@@ -283,7 +281,7 @@ describe('HappenNode', () => {
       expect(slowHandler).toHaveBeenCalledTimes(5);
       expect(maxConcurrent).toBeLessThanOrEqual(2);
       
-      await limitedNode.stop();
+      // Nodes are autonomous - no need to stop
     });
   });
 
@@ -295,7 +293,7 @@ describe('HappenNode', () => {
       node.on('test.event', errorHandler);
       node.on('system.error', systemHandler);
       
-      await node.start();
+      // Nodes are autonomous - no need to start
       node.emit({ type: 'test.event', payload: {} });
       
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -319,7 +317,7 @@ describe('HappenNode', () => {
       node.on('error.event', errorHandler);
       node.on('working.event', workingHandler);
       
-      await node.start();
+      // Nodes are autonomous - no need to start
       
       // Emit error event
       node.emit({ type: 'error.event', payload: {} });
@@ -347,7 +345,7 @@ describe('HappenNode', () => {
       timeoutNode.on('slow.event', slowHandler);
       timeoutNode.on('system.error', systemHandler);
       
-      await timeoutNode.start();
+      // Nodes are autonomous - no need to start
       timeoutNode.emit({ type: 'slow.event', payload: {} });
       
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -362,25 +360,23 @@ describe('HappenNode', () => {
         expect.any(Object) // Handler context
       );
       
-      await timeoutNode.stop();
+      // Nodes are autonomous - no need to stop
     });
   });
 
   describe('node lifecycle', () => {
-    it('should stop processing events when stopped', async () => {
+    it('should always be ready to process events (autonomous)', async () => {
       const handler = jest.fn();
       node.on('test.event', handler);
       
-      await node.start();
-      await node.stop();
-      
+      // Nodes are autonomous - always ready
       node.emit({ type: 'test.event', payload: {} });
       await new Promise(resolve => setTimeout(resolve, 10));
       
-      expect(handler).not.toHaveBeenCalled();
+      expect(handler).toHaveBeenCalled();
     });
 
-    it('should wait for current processing to complete before stopping', async () => {
+    it('should handle concurrent processing naturally', async () => {
       let processingStarted = false;
       let processingCompleted = false;
       
@@ -391,7 +387,6 @@ describe('HappenNode', () => {
       });
       
       node.on('slow.event', slowHandler);
-      await node.start();
       
       node.emit({ type: 'slow.event', payload: {} });
       
@@ -400,8 +395,8 @@ describe('HappenNode', () => {
       expect(processingStarted).toBe(true);
       expect(processingCompleted).toBe(false);
       
-      // Stop node - should wait for completion
-      await node.stop();
+      // Wait for completion
+      await new Promise(resolve => setTimeout(resolve, 60));
       expect(processingCompleted).toBe(true);
     });
   });

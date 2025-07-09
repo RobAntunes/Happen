@@ -93,6 +93,13 @@ export class ViewRegistry {
     this.clearCacheForNode(nodeId);
     this.clearSubscriptionsForNode(nodeId);
   }
+  
+  /**
+   * Get all registered nodes
+   */
+  getAllNodes(): HappenNode[] {
+    return Array.from(this.nodes.values());
+  }
 
   /**
    * Get state from a node with selector

@@ -4,7 +4,7 @@
  */
 
 import { EventHandler, HappenEvent, HandlerContext } from '../types';
-import { generateId } from '../utils/id';
+// import { generateId } from '../utils/id';
 
 /**
  * Circuit Breaker State
@@ -80,11 +80,12 @@ export class CircuitBreaker {
     }
   }
   
-  getState(): { state: CircuitState; failures: number; successes: number } {
+  getState(): { state: CircuitState; failures: number; successes: number; lastFailureTime: number } {
     return {
       state: this.state,
       failures: this.failures,
-      successes: this.successes
+      successes: this.successes,
+      lastFailureTime: this.lastFailureTime
     };
   }
 }

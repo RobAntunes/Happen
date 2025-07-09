@@ -112,6 +112,15 @@ export type EventHandlerResult<T = EventPayload> =
   | AsyncGenerator<any, any, unknown>; // Support for streaming results
 
 /**
+ * Simple event handler - receives a single event
+ * This is the most common handler type used in node.on()
+ */
+export type SimpleEventHandler<T = EventPayload> = (
+  event: HappenEvent<T>,
+  context: HandlerContext
+) => EventHandlerResult<T>;
+
+/**
  * Event handler function - receives event(s) and mutable context
  * Can return regular results or async generators for streaming
  */
@@ -188,7 +197,7 @@ export interface HappenNode<T = any> {
   readonly state: NodeState<T>;
   readonly global: GlobalState;
   
-  on(pattern: Pattern, handler: EventHandler): () => void;
+  on(pattern: Pattern, handler: SimpleEventHandler): () => void;
   zero(pattern: string, handler: ZeroAllocationHandler): () => void;
   send(target: HappenNode | HappenNode[] | ID, event: Partial<HappenEvent>): SendResult;
   send(target: HappenNode | HappenNode[] | ID, events: Partial<HappenEvent>[]): SendResult;

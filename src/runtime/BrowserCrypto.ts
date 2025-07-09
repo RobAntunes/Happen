@@ -1,4 +1,6 @@
-import type { ICrypto, JsonWebKey, BufferSource } from '../core/runtime-modules';
+/// <reference path="../types/browser.d.ts" />
+
+import type { ICrypto } from '../core/runtime-modules';
 
 // Helper: ArrayBuffer to Base64Url String
 function bufferToBase64Url(buffer: ArrayBuffer): string {
@@ -23,7 +25,7 @@ function base64UrlToBuffer(base64Url: string): ArrayBuffer {
  */
 export class BrowserCrypto implements ICrypto {
     private subtle: SubtleCrypto;
-    private defaultSignAlgo: EcdsaParams = { name: 'ECDSA', hash: 'SHA-256' };
+    private defaultSignAlgo: EcdsaParams = { name: 'ECDSA', hash: { name: 'SHA-256' } };
     private defaultKeyAlgo: EcKeyGenParams = { name: 'ECDSA', namedCurve: 'P-256' };
 
     constructor() {

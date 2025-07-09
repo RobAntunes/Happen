@@ -1,6 +1,6 @@
 {
   "name": "@happen/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Universal event-driven communication framework - Simply productive",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +17,10 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist coverage",
     "prepublishOnly": "npm run clean && npm run build && npm run test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "benchmark": "npm run benchmark:basic && npm run benchmark:nats",
+    "benchmark:basic": "ts-node benchmarks/basic-performance.ts",
+    "benchmark:nats": "ts-node benchmarks/nats-performance.ts"
   },
   "keywords": [
     "event-driven",
@@ -30,16 +33,16 @@
     "events",
     "happen"
   ],
-  "author": "",
+  "author": "Happen Framework Contributors",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/happen.git"
+    "url": "git+https://github.com/happen-framework/happen.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/happen/issues"
+    "url": "https://github.com/happen-framework/happen/issues"
   },
-  "homepage": "https://github.com/yourusername/happen#readme",
+  "homepage": "https://github.com/happen-framework/happen#readme",
   "files": [
     "dist",
     "README.md",
@@ -48,6 +51,10 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
   "dependencies": {
     "msgpackr": "^1.10.1",
     "nats": "^2.19.0"
@@ -64,6 +71,7 @@
     "lint-staged": "^15.2.2",
     "prettier": "^3.2.5",
     "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
   "lint-staged": {

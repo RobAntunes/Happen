@@ -12,8 +12,10 @@ export * from './patterns';
 export * from './state';
 export * from './continuum';
 export { getGlobalViewRegistry, createViewCollection } from './views';
+export { View, ViewManager, SimpleView } from './views/simple-view';
 export * from './identity';
 export * from './temporal';
+export { createFlowBalanceMonitor } from './flow-balance';
 
 // Re-export zero-allocation utilities (excluding conflicting types)
 export {

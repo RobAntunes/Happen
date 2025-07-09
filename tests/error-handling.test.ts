@@ -4,32 +4,25 @@
  */
 
 import { initializeHappen } from '../src';
-import { flow } from '../src/continuum';
-import { resilience, getGlobalSupervisor, CircuitBreaker } from '../src/resilience';
-import { createErrorEvent } from '../src/events';
+import { resilience, getGlobalSupervisor } from '../src/resilience';
+// import { createErrorEvent } from '../src/events';
 
 describe('Error Handling', () => {
   let happen: any;
-  let cleanup: (() => Promise<void>)[] = [];
   
   beforeEach(() => {
     happen = initializeHappen();
-  });
-  
-  afterEach(async () => {
-    await Promise.all(cleanup.map(fn => fn()));
-    cleanup = [];
   });
 
   describe('1. Functional Error Model', () => {
     it('should handle errors as flow branches', async () => {
       const node = happen.createNode('test-node');
-      cleanup.push(() => node.stop());
+      // Node is autonomous - no cleanup needed
       
       let results: any[] = [];
       
       // Error handler function
-      function handleValidationError(event: any, context: any) {
+      function handleValidationError(_event: any, context: any) {
         results.push({
           type: 'error',
           reason: 'validation-failed',
@@ -73,16 +66,16 @@ describe('Error Handling', () => {
 
     it('should support nested error handling', async () => {
       const node = happen.createNode('test-node');
-      cleanup.push(() => node.stop());
+      // Node is autonomous - no cleanup needed
       
       let results: any[] = [];
       
-      function handlePaymentError(event: any, context: any) {
+      function handlePaymentError(_event: any, context: any) {
         results.push({ step: 'payment-error', error: context.paymentError });
         return { success: false, reason: 'payment-failed' };
       }
       
-      function handleValidationError(event: any, context: any) {
+      function handleValidationError(_event: any, context: any) {
         results.push({ step: 'validation-error', error: context.validationError });
         return { success: false, reason: 'validation-failed' };
       }
@@ -126,11 +119,11 @@ describe('Error Handling', () => {
   describe('2. Error Propagation and Context', () => {
     it('should propagate error information through context', async () => {
       const node = happen.createNode('test-node');
-      cleanup.push(() => node.stop());
+      // Node is autonomous - no cleanup needed
       
       let capturedContext: any = null;
       
-      function handleError(event: any, context: any) {
+      function handleError(_event: any, context: any) {
         capturedContext = { ...context };
         return { success: false, details: context.error };
       }
@@ -142,7 +135,7 @@ describe('Error Handling', () => {
           context.error = {
             message: (error as Error).message,
             timestamp: Date.now(),
-            correlationId: event.context.causal.correlationId
+            correlationId: event.context.causal.correlationId || event.context.causal.id
           };
           return handleError;
         }
@@ -168,12 +161,12 @@ describe('Error Handling', () => {
   describe('3. Recovery Patterns', () => {
     it('should implement retry pattern', async () => {
       const node = happen.createNode('test-node');
-      cleanup.push(() => node.stop());
+      // Node is autonomous - no cleanup needed
       
       let attempts = 0;
       let results: any[] = [];
       
-      function processWithRetry(event: any, context: any) {
+      function processWithRetry(_event: any, context: any) {
         context.retryCount = context.retryCount || 0;
         attempts++;
         
@@ -205,13 +198,13 @@ describe('Error Handling', () => {
 
     it('should implement circuit breaker pattern', async () => {
       const node = happen.createNode('test-node');
-      cleanup.push(() => node.stop());
+      // Node is autonomous - no cleanup needed
       
       let attempts = 0;
       let results: any[] = [];
       
       // Handler that fails multiple times
-      function failingHandler(event: any, context: any) {
+      function failingHandler(_event: any, _context: any) {
         attempts++;
         if (attempts < 6) {
           throw new Error(`Attempt ${attempts} failed`);
@@ -220,7 +213,7 @@ describe('Error Handling', () => {
       }
       
       // Fallback handler
-      function fallbackHandler(event: any, context: any) {
+      function fallbackHandler(_event: any, _context: any) {
         results.push({ type: 'fallback', reason: 'circuit-open' });
         return { success: false, reason: 'service-unavailable' };
       }
@@ -256,13 +249,13 @@ describe('Error Handling', () => {
 
     it('should implement bulkhead pattern', async () => {
       const node = happen.createNode('test-node');
-      cleanup.push(() => node.stop());
+      // Node is autonomous - no cleanup needed
       
       let concurrentCount = 0;
       let maxConcurrent = 0;
       let results: any[] = [];
       
-      function slowHandler(event: any, context: any) {
+      function slowHandler(event: any, _context: any) {
         concurrentCount++;
         maxConcurrent = Math.max(maxConcurrent, concurrentCount);
         
@@ -295,11 +288,11 @@ describe('Error Handling', () => {
 
     it('should implement fallback pattern', async () => {
       const node = happen.createNode('test-node');
-      cleanup.push(() => node.stop());
+      // Node is autonomous - no cleanup needed
       
       let results: any[] = [];
       
-      function primaryHandler(event: any, context: any) {
+      function primaryHandler(_event: any, _context: any) {
         throw new Error('Primary service failed');
       }
       
@@ -333,7 +326,7 @@ describe('Error Handling', () => {
       const node = happen.createNode('test-node');
       const monitoringNode = happen.createNode('monitoring-node');
       
-      cleanup.push(() => node.stop(), () => monitoringNode.stop());
+      // cleanup.push(() => node.stop(), () => monitoringNode.stop());
       
       let errorEvents: any[] = [];
       
@@ -347,12 +340,12 @@ describe('Error Handling', () => {
       });
       
       // Handler that creates error events
-      node.on('process-payment', (event: any, context: any) => {
+      node.on('process-payment', (event: any, _context: any) => {
         try {
           throw new Error('Payment processing failed');
         } catch (error) {
           // Create and broadcast error event
-          const errorEvent = createErrorEvent(error as Error, event, {}, node.id);
+          // const errorEvent = createErrorEvent(error as Error, event, {}, node.id);
           
           node.broadcast({
             type: 'payment.error',
@@ -445,12 +438,12 @@ describe('Error Handling', () => {
       const nodeA = happen.createNode('node-a');
       const nodeB = happen.createNode('node-b');
       
-      cleanup.push(() => nodeA.stop(), () => nodeB.stop());
+      // cleanup.push(() => nodeA.stop(), () => nodeB.stop());
       
       let errorChain: any[] = [];
       
       // Node A - originates error
-      nodeA.on('process-task', (event: any, context: any) => {
+      nodeA.on('process-task', (event: any, _context: any) => {
         try {
           throw new Error('Task processing failed');
         } catch (error) {
@@ -470,7 +463,7 @@ describe('Error Handling', () => {
       });
       
       // Node B - handles failure from Node A
-      nodeB.on('orchestrate-workflow', async (event: any, context: any) => {
+      nodeB.on('orchestrate-workflow', async (event: any, _context: any) => {
         const result = await nodeB.send(nodeA, {
           type: 'process-task',
           payload: event.payload.taskData

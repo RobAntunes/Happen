@@ -10,6 +10,13 @@ import { BrowserTransport } from './transport/browser';
 import { TemporalStateConfig, setNatsConnection } from './temporal';
 
 export interface HappenInitConfig {
+  transport?: {
+    type: 'memory' | 'nats';
+    options?: {
+      servers?: string | string[];
+      [key: string]: any;
+    };
+  };
   nats?: {
     server?: {
       servers: string | string[];
@@ -27,11 +34,14 @@ export interface HappenInitConfig {
   };
 }
 
+import { ViewManager } from './views/simple-view';
+
 export interface HappenInstance {
   createNode: <T = any>(name: string, options?: NodeOptions<T>, temporalConfig?: TemporalStateConfig) => HappenNode<T>;
   transport?: any;
   enableTemporal: () => void;
   disableTemporal: () => void;
+  views: ViewManager;
 }
 
 /**
@@ -89,11 +99,15 @@ export function initializeHappen(config: HappenInitConfig = {}): HappenInstance 
     temporalEnabled = false;
   };
   
+  // Create view manager
+  const views = new ViewManager();
+  
   return {
     createNode,
     transport,
     enableTemporal,
-    disableTemporal
+    disableTemporal,
+    views
   };
 }
 
