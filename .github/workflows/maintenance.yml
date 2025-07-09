@@ -1,0 +1,202 @@
+name: Repository Maintenance
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  stale-issues:
+    name: Close stale issues and PRs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Close stale issues
+        uses: actions/stale@v8
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Issues
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          stale-issue-label: 'stale'
+          stale-issue-message: |
+            This issue has been automatically marked as stale because it has been open for 60 days without activity.
+            
+            If this issue is still relevant, please:
+            - Comment to keep it open
+            - Provide additional context or updates
+            - Submit a pull request to address it
+            
+            This issue will be closed in 14 days if no further activity occurs.
+            Thank you for your contributions! 🙏
+          close-issue-message: |
+            This issue has been automatically closed due to inactivity.
+            
+            If you believe this issue is still relevant, please feel free to reopen it with additional context.
+            Thank you for your understanding! 🙏
+          
+          # Pull Requests  
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-pr-label: 'stale'
+          stale-pr-message: |
+            This pull request has been automatically marked as stale because it has been open for 30 days without activity.
+            
+            If this PR is still relevant, please:
+            - Rebase on the latest dev branch
+            - Address any review feedback
+            - Comment to indicate continued work
+            
+            This PR will be closed in 14 days if no further activity occurs.
+            Thank you for your contribution! 🙏
+          close-pr-message: |
+            This pull request has been automatically closed due to inactivity.
+            
+            If you'd like to continue this work, please feel free to reopen or create a new PR.
+            Thank you for your contribution! 🙏
+          
+          # Exempt labels
+          exempt-issue-labels: 'pinned,security,good first issue'
+          exempt-pr-labels: 'pinned,security,work-in-progress'
+
+  update-dependencies:
+    name: Update dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Update dependencies
+        run: |
+          # Update non-breaking changes
+          npx npm-check-updates -u --target minor
+          npm install
+      
+      - name: Run tests
+        run: |
+          npm test
+          npm run typecheck
+          npm run lint
+      
+      - name: Create PR for dependency updates
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies'
+          title: 'chore: update dependencies'
+          body: |
+            This is an automated PR to update dependencies to their latest compatible versions.
+            
+            ## Changes
+            - Updated dependencies to latest minor/patch versions
+            - All tests pass
+            - No breaking changes included
+            
+            ## Review Checklist
+            - [ ] All tests pass
+            - [ ] No breaking changes
+            - [ ] Dependencies are properly updated
+            
+            This PR was automatically created by the maintenance workflow.
+          branch: chore/update-dependencies
+          delete-branch: true
+
+  security-audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run security audit
+        run: |
+          # Check for security vulnerabilities
+          npm audit --audit-level=moderate
+          
+          # Fix automatically fixable issues
+          npm audit fix --dry-run
+      
+      - name: Create security issue if vulnerabilities found
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = '🚨 Security vulnerabilities detected';
+            const body = `
+            ## Security Alert
+            
+            Automated security scan has detected vulnerabilities in our dependencies.
+            
+            ## Action Required
+            - Review the npm audit output
+            - Update vulnerable dependencies
+            - Test thoroughly after updates
+            
+            ## Next Steps
+            1. Run \`npm audit\` locally to see details
+            2. Run \`npm audit fix\` to automatically fix issues
+            3. For vulnerabilities that can't be auto-fixed, manually update dependencies
+            4. Create a PR with the fixes
+            
+            This issue was automatically created by the maintenance workflow.
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'high-priority']
+            });
+
+  performance-benchmark:
+    name: Performance benchmark
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build package
+        run: npm run build
+      
+      - name: Run performance benchmarks
+        run: |
+          npm run benchmark > benchmark_results.txt
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: benchmark_results.txt
+          retention-days: 30
