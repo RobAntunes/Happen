@@ -1,0 +1,442 @@
+[
+  {
+    "name": "Standard Event Processing",
+    "operations": 10000,
+    "duration": 9,
+    "throughput": 1111111.111111111,
+    "latency": {
+      "min": 0.000541,
+      "max": 0.123417,
+      "mean": 0.0008295221000000122,
+      "p50": 0.000667,
+      "p95": 0.001042,
+      "p99": 0.002333
+    },
+    "memory": {
+      "heapUsedBefore": 7639176,
+      "heapUsedAfter": 11978800,
+      "heapDelta": 4339624,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Zero-Allocation Event Processing",
+    "operations": 10000,
+    "duration": 13,
+    "throughput": 769230.7692307692,
+    "latency": {
+      "min": 0.000875,
+      "max": 0.077417,
+      "mean": 0.0012916715999999613,
+      "p50": 0.001125,
+      "p95": 0.001583,
+      "p99": 0.003167
+    },
+    "memory": {
+      "heapUsedBefore": 7712744,
+      "heapUsedAfter": 9798592,
+      "heapDelta": 2085848,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Event Creation (Causality)",
+    "operations": 50000,
+    "duration": 24,
+    "throughput": 2083333.3333333335,
+    "latency": {
+      "min": 0.000291,
+      "max": 0.07325,
+      "mean": 0.00041557515999991165,
+      "p50": 0.000375,
+      "p95": 0.000459,
+      "p99": 0.0015
+    },
+    "memory": {
+      "heapUsedBefore": 7741432,
+      "heapUsedAfter": 8876608,
+      "heapDelta": 1135176,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Pattern Matching - Exact",
+    "operations": 10000,
+    "duration": 8,
+    "throughput": 1250000,
+    "latency": {
+      "min": 0.000416,
+      "max": 0.070667,
+      "mean": 0.0006387074999999195,
+      "p50": 0.000542,
+      "p95": 0.00075,
+      "p99": 0.00175
+    },
+    "memory": {
+      "heapUsedBefore": 7730656,
+      "heapUsedAfter": 8083768,
+      "heapDelta": 353112,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Event Continuum - Simple Chain",
+    "operations": 5000,
+    "duration": 82,
+    "throughput": 60975.60975609756,
+    "latency": {
+      "min": 0.0015,
+      "max": 0.234125,
+      "mean": 0.016352740799999984,
+      "p50": 0.015208,
+      "p95": 0.026875,
+      "p99": 0.070667
+    },
+    "memory": {
+      "heapUsedBefore": 7758832,
+      "heapUsedAfter": 10056720,
+      "heapDelta": 2297888,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Pure Buffer Write (Zero-Allocation)",
+    "operations": 100000,
+    "duration": 39,
+    "throughput": 2564102.564102564,
+    "latency": {
+      "min": 0.000208,
+      "max": 0.09175,
+      "mean": 0.0003363515700001609,
+      "p50": 0.000292,
+      "p95": 0.000416,
+      "p99": 0.00075
+    },
+    "memory": {
+      "heapUsedBefore": 8859040,
+      "heapUsedAfter": 25023792,
+      "heapDelta": 16164752,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Standard Object Creation",
+    "operations": 100000,
+    "duration": 19,
+    "throughput": 5263157.894736842,
+    "latency": {
+      "min": 0.000041,
+      "max": 0.20325,
+      "mean": 0.00013333211000001512,
+      "p50": 0.000125,
+      "p95": 0.000167,
+      "p99": 0.000167
+    },
+    "memory": {
+      "heapUsedBefore": 8830904,
+      "heapUsedAfter": 20334784,
+      "heapDelta": 11503880,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Pure Buffer Read (Zero-Allocation)",
+    "operations": 100000,
+    "duration": 48,
+    "throughput": 2083333.3333333335,
+    "latency": {
+      "min": 0.000291,
+      "max": 0.157667,
+      "mean": 0.00043793552999972393,
+      "p50": 0.000375,
+      "p95": 0.000583,
+      "p99": 0.00125
+    },
+    "memory": {
+      "heapUsedBefore": 8917080,
+      "heapUsedAfter": 26720720,
+      "heapDelta": 17803640,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Standard Object Access",
+    "operations": 100000,
+    "duration": 16,
+    "throughput": 6250000,
+    "latency": {
+      "min": 0,
+      "max": 0.145541,
+      "mean": 0.00011208512000003768,
+      "p50": 0.000084,
+      "p95": 0.000125,
+      "p99": 0.00025
+    },
+    "memory": {
+      "heapUsedBefore": 8894432,
+      "heapUsedAfter": 12548744,
+      "heapDelta": 3654312,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Buffer Pool - Acquire/Release",
+    "operations": 100000,
+    "duration": 18,
+    "throughput": 5555555.555555556,
+    "latency": {
+      "min": 0.000041,
+      "max": 0.103167,
+      "mean": 0.00013703905000002068,
+      "p50": 0.000125,
+      "p95": 0.000167,
+      "p99": 0.00025
+    },
+    "memory": {
+      "heapUsedBefore": 8902360,
+      "heapUsedAfter": 39229920,
+      "heapDelta": 30327560,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "JSON Serialization (Standard Path)",
+    "operations": 50000,
+    "duration": 64,
+    "throughput": 781250,
+    "latency": {
+      "min": 0.001041,
+      "max": 0.179542,
+      "mean": 0.0012424652399996017,
+      "p50": 0.001208,
+      "p95": 0.001459,
+      "p99": 0.001792
+    },
+    "memory": {
+      "heapUsedBefore": 8909056,
+      "heapUsedAfter": 18721536,
+      "heapDelta": 9812480,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "Zero-Allocation Path (Direct Buffer)",
+    "operations": 50000,
+    "duration": 29,
+    "throughput": 1724137.9310344828,
+    "latency": {
+      "min": 0.000333,
+      "max": 0.101125,
+      "mean": 0.000523809219999908,
+      "p50": 0.000458,
+      "p95": 0.001042,
+      "p99": 0.001167
+    },
+    "memory": {
+      "heapUsedBefore": 8926408,
+      "heapUsedAfter": 20828056,
+      "heapDelta": 11901648,
+      "external": 2388376
+    }
+  },
+  {
+    "name": "State Set (Simple)",
+    "operations": 1000,
+    "duration": 425,
+    "throughput": 2352.9411764705883,
+    "latency": {
+      "min": 0.278,
+      "max": 2.453083,
+      "mean": 0.4246310369999999,
+      "p50": 0.360791,
+      "p95": 0.770166,
+      "p99": 1.430083
+    },
+    "memory": {
+      "heapUsedBefore": 9343208,
+      "heapUsedAfter": 14619528,
+      "heapDelta": 5276320,
+      "external": 2457038
+    }
+  },
+  {
+    "name": "State Get (Simple)",
+    "operations": 2000,
+    "duration": 404,
+    "throughput": 4950.495049504951,
+    "latency": {
+      "min": 0.138084,
+      "max": 0.56975,
+      "mean": 0.2021966024999999,
+      "p50": 0.208833,
+      "p95": 0.233917,
+      "p99": 0.270333
+    },
+    "memory": {
+      "heapUsedBefore": 9615720,
+      "heapUsedAfter": 20195024,
+      "heapDelta": 10579304,
+      "external": 2598169
+    }
+  },
+  {
+    "name": "State Get with Transform",
+    "operations": 2000,
+    "duration": 422,
+    "throughput": 4739.336492890995,
+    "latency": {
+      "min": 0.148833,
+      "max": 5.572541,
+      "mean": 0.2109725225000003,
+      "p50": 0.2125,
+      "p95": 0.237458,
+      "p99": 0.297792
+    },
+    "memory": {
+      "heapUsedBefore": 9613824,
+      "heapUsedAfter": 18703920,
+      "heapDelta": 9090096,
+      "external": 2570569
+    }
+  },
+  {
+    "name": "Views - Single Node Access",
+    "operations": 500,
+    "duration": 322,
+    "throughput": 1552.7950310559006,
+    "latency": {
+      "min": 0.475625,
+      "max": 2.643375,
+      "mean": 0.6441153819999996,
+      "p50": 0.632667,
+      "p95": 0.694792,
+      "p99": 0.942708
+    },
+    "memory": {
+      "heapUsedBefore": 9626696,
+      "heapUsedAfter": 15458936,
+      "heapDelta": 5832240,
+      "external": 2497584
+    }
+  },
+  {
+    "name": "Views - Collect from Multiple Nodes",
+    "operations": 300,
+    "duration": 247,
+    "throughput": 1214.574898785425,
+    "latency": {
+      "min": 0.590541,
+      "max": 1.148291,
+      "mean": 0.8242857033333335,
+      "p50": 0.833041,
+      "p95": 0.939584,
+      "p99": 1.114459
+    },
+    "memory": {
+      "heapUsedBefore": 9649392,
+      "heapUsedAfter": 22600896,
+      "heapDelta": 12951504,
+      "external": 2686905
+    }
+  },
+  {
+    "name": "Fan-Out to 5 Nodes",
+    "operations": 1000,
+    "duration": 4,
+    "throughput": 250000,
+    "latency": {
+      "min": 0.002666,
+      "max": 0.019,
+      "mean": 0.0033072439999999844,
+      "p50": 0.003042,
+      "p95": 0.004792,
+      "p99": 0.007625
+    },
+    "memory": {
+      "heapUsedBefore": 9713304,
+      "heapUsedAfter": 24269808,
+      "heapDelta": 14556504,
+      "external": 2388736
+    }
+  },
+  {
+    "name": "Fan-Out with Result Collection",
+    "operations": 500,
+    "duration": 2,
+    "throughput": 250000,
+    "latency": {
+      "min": 0.002917,
+      "max": 0.065709,
+      "mean": 0.0037870159999999972,
+      "p50": 0.00325,
+      "p95": 0.004667,
+      "p99": 0.014917
+    },
+    "memory": {
+      "heapUsedBefore": 9734736,
+      "heapUsedAfter": 17183920,
+      "heapDelta": 7449184,
+      "external": 2388736
+    }
+  },
+  {
+    "name": "Fan-In - Batch of 10 Events",
+    "operations": 1000,
+    "duration": 5,
+    "throughput": 200000,
+    "latency": {
+      "min": 0.003583,
+      "max": 0.107208,
+      "mean": 0.004689181999999982,
+      "p50": 0.004208,
+      "p95": 0.006042,
+      "p99": 0.010084
+    },
+    "memory": {
+      "heapUsedBefore": 9736968,
+      "heapUsedAfter": 12024544,
+      "heapDelta": 2287576,
+      "external": 2388736
+    }
+  },
+  {
+    "name": "Fan-In - Batch of 50 Events",
+    "operations": 500,
+    "duration": 10,
+    "throughput": 50000,
+    "latency": {
+      "min": 0.01575,
+      "max": 0.151917,
+      "mean": 0.019789641999999996,
+      "p50": 0.018125,
+      "p95": 0.026291,
+      "p99": 0.045167
+    },
+    "memory": {
+      "heapUsedBefore": 9757416,
+      "heapUsedAfter": 19738472,
+      "heapDelta": 9981056,
+      "external": 2388736
+    }
+  },
+  {
+    "name": "Fan-In - Batch of 100 Events",
+    "operations": 200,
+    "duration": 8,
+    "throughput": 25000,
+    "latency": {
+      "min": 0.033125,
+      "max": 0.166667,
+      "mean": 0.03904438499999998,
+      "p50": 0.035708,
+      "p95": 0.052334,
+      "p99": 0.080417
+    },
+    "memory": {
+      "heapUsedBefore": 9764280,
+      "heapUsedAfter": 10637176,
+      "heapDelta": 872896,
+      "external": 2388736
+    }
+  }
+]

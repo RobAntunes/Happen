@@ -1,0 +1,40 @@
+{
+  "name": "happen",
+  "version": "0.1.0",
+  "description": "A minimalist framework for building distributed and agent-based systems with pure causality",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "npm run build && node --test ./dist/tests/**/*.test.js",
+    "test:watch": "node --test --watch ./dist/tests/**/*.test.js",
+    "bench": "npm run build && node --expose-gc dist/benchmarks/run-all.js",
+    "bench:quick": "npm run build && node dist/benchmarks/run-all.js"
+  },
+  "keywords": [
+    "event-driven",
+    "distributed-systems",
+    "agents",
+    "nats",
+    "messaging",
+    "causality",
+    "event-sourcing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "nats": "^2.28.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
